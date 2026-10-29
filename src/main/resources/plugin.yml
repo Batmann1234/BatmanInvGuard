@@ -1,0 +1,29 @@
+name: BatmanInv
+version: '${project.version}'
+main: me.batmaninv.BatmanInvPlugin
+api-version: '1.21'
+description: Detecta FastHotbar, InvMove y FastMouse (Mouse Tweaks).
+commands:
+  batmaninv:
+    description: Comandos de BatmanInv
+    usage: /<command> <help|reload|alerts|profile|stats|clearlogs>
+    aliases: [binv]
+permissions:
+  batmaninv.admin:
+    description: Recargar configuración y borrar registros
+    default: op
+  batmaninv.alerts:
+    description: Recibir alertas y activarlas/desactivarlas
+    default: op
+  batmaninv.alerts.others:
+    description: Activar/desactivar alertas de otros jugadores
+    default: op
+  batmaninv.profile:
+    description: Ver el perfil de un jugador
+    default: op
+  batmaninv.stats:
+    description: Ver las estadísticas generales
+    default: op
+  batmaninv.bypass:
+    description: No es revisado por los checks
+    default: false

@@ -1,0 +1,173 @@
+# ============================================================
+#   ʙᴀᴛᴍᴀɴɪɴᴠ  -  config.yml
+#   Checks: FastHotbar | InvMove | FastMouse
+#   Los textos (alertas, hover, comandos) están en messages.yml
+#   Se detecta el COMPORTAMIENTO, no el mod: el servidor solo ve paquetes.
+# ============================================================
+
+settings:
+  # Interruptor general: false = ningún check cancela acciones (solo alertan).
+  # Útil para probar umbrales sin molestar a los jugadores.
+  cancel-events: true
+
+  # Imprime en consola cada detección (incluso las que no llegan a alertar).
+  debug: false
+
+  # Formato de fecha usado en /batmaninv profile (patrón de Java).
+  date-format: "dd/MM/yyyy HH:mm"
+
+  # Modos de juego que NO se revisan.
+  ignored-gamemodes:
+    - CREATIVE
+    - SPECTATOR
+
+  # Mundos que NO se revisan.
+  ignored-worlds: []
+
+  # Tipos de inventario (el de arriba) que NO se revisan. Ej: [ENDER_CHEST, HOPPER]
+  ignored-inventory-types: []
+
+  # Exenciones para evitar falsos positivos.
+  exempt:
+    # Jugadores Bedrock (Geyser/Floodgate): mueven ítems con toques y suelen dar falsos positivos.
+    bedrock-players: true
+    # Si el ping supera este valor no se revisa (0 = desactivado).
+    ping-above-ms: 600
+    # Si los TPS del servidor bajan de este valor no se revisa (0 = desactivado).
+    # El lag junta paquetes y parece una ráfaga.
+    tps-below: 15.0
+
+# Cómo se acumulan las infracciones (VL).
+violations:
+  # Cada infracción vive este tiempo; pasado eso "caduca".
+  decay-seconds: 60
+  # Tiempo mínimo entre dos infracciones del mismo check (evita sumar 20 por un solo arrastre).
+  count-cooldown-ms: 400
+
+# Alertas para el staff.
+alerts:
+  enabled: true
+  # Mostrar también en la consola.
+  console: true
+  # Si el staff recibe alertas al entrar (false = deben activarlas con /batmaninv alerts).
+  enabled-on-join: true
+  # Mensaje emergente al pasar el cursor (alert-hover-message en messages.yml).
+  hover: true
+  click:
+    enabled: true
+    # RUN_COMMAND | SUGGEST_COMMAND | COPY_TO_CLIPBOARD
+    action: RUN_COMMAND
+  sound:
+    enabled: false
+    # Clave de sonido de Minecraft.
+    name: "entity.experience_orb.pickup"
+    volume: 1.0
+    pitch: 1.5
+
+# Sanciones automáticas (los comandos se definen en cada check).
+punishments:
+  enabled: false
+  # Avisar en el chat cuando alguien es sancionado (punishment-broadcast en messages.yml).
+  broadcast: true
+  # true = solo lo ve el staff con batmaninv.alerts.
+  broadcast-staff-only: false
+
+# Historial usado por /batmaninv profile, stats y clearlogs (se guarda en data.yml).
+storage:
+  enabled: true
+  autosave-minutes: 5
+  max-alert-history-per-player: 500
+  # Los jugadores sin actividad en estos días se borran al cargar (0 = nunca).
+  purge-after-days: 30
+
+# Estado que se muestra en /batmaninv profile según el total de alertas.
+profile:
+  suspicious-alerts: 5
+  dangerous-alerts: 20
+  max-punishments-shown: 3
+
+# ------------------------------------------------------------
+#  CHECKS
+#  Opciones comunes de cada check:
+#   enabled         activa/desactiva el check
+#   experimental    añade el prefijo dev-prefix a la alerta
+#   max-violations  VL necesarias para sancionar (también se muestra como x/max en la alerta)
+#   alert-after     VL mínimas para enviar alerta
+#   cancel-events   cancela la acción detectada (necesita settings.cancel-events: true)
+#   commands        comandos de sanción (consola). %player% y %check%
+# ------------------------------------------------------------
+checks:
+
+  # FastHotbar: cambios de hotbar demasiado rápidos / instantáneos.
+  fast-hotbar:
+    enabled: true
+    experimental: false
+    max-violations: 10
+    alert-after: 1
+    cancel-events: true
+    commands:
+      - "kick %player% [BatmanInv] %check%"
+    # Más de max-actions acciones dentro de window-ms = infracción.
+    window-ms: 1000
+    max-actions: 16
+    # burst-actions o más acciones dentro de burst-ms (aprox. 1 tick) = infracción.
+    burst-ms: 50
+    burst-actions: 5
+    # Qué cuenta como acción de hotbar.
+    count:
+      slot-changes: true        # scroll / teclas 1-9 fuera del inventario
+      number-key-clicks: true   # teclas 1-9 dentro del inventario
+      swap-hands: true          # tecla F
+
+  # InvMove: mover ítems del inventario/hotbar mientras el jugador se desplaza.
+  inv-move:
+    enabled: true
+    experimental: false
+    max-violations: 5
+    alert-after: 1
+    cancel-events: true
+    commands:
+      - "kick %player% [BatmanInv] %check%"
+    # true = solo clics relacionados con la hotbar (slots 0-8, tecla número, tecla F).
+    only-hotbar: false
+    # Bloques por tick para considerar que el jugador se mueve (caminar ~0.21, sneak ~0.06).
+    min-distance: 0.12
+    # Ticks seguidos moviéndose antes de contarlo como movimiento real.
+    streak-ticks: 3
+    # El último movimiento debe ser de hace menos de esto.
+    window-ms: 100
+    # Tipos de clic que NO se revisan. Ej: [DROP, CONTROL_DROP]
+    ignored-click-types: []
+    exempt:
+      after-hit-ms: 1000   # tras recibir daño/knockback/velocidad (0 = no eximir)
+      ice: true            # deslizarse sobre hielo
+      water: true
+      vehicle: true
+      gliding: true
+      flying: true
+      swimming: true
+      sneaking: false      # true = ignorar si va agachado
+
+  # FastMouse: Mouse Tweaks (shift + clic mantenido arrastrando sobre muchos slots).
+  fast-mouse:
+    enabled: true
+    experimental: false
+    max-violations: 5
+    alert-after: 1
+    cancel-events: true
+    commands:
+      - "kick %player% [BatmanInv] %check%"
+    # Tiempo máximo entre shift-clics para considerarlos una misma cadena.
+    max-gap-ms: 75
+    # Shift-clics en slots distintos para marcar infracción.
+    min-chain: 5
+    # Shift + doble clic: manda clics del MISMO ítem casi en el mismo instante.
+    # Una cadena de un solo tipo de ítem dentro de este tiempo se considera doble clic.
+    double-click-burst-ms: 100
+    # true = shift + doble clic permitido (recomendado). false = también se marca.
+    allow-double-click-burst: true
+    # Repetir el mismo slot dentro de este tiempo no cuenta (doble clic normal).
+    same-slot-repeat-ms: 400
+    count:
+      shift-left: true
+      shift-right: true

@@ -1,0 +1,185 @@
+#   ___           _                          _____
+#  | _ ) __ _ _ _| |_ _ __  __ _ _ _  ___  |_ _|_ ___ __
+#  | _ \/ _` |  _|  _| '  \/ _` | ' \|___|  | || ' \ V /
+#  |___/\__,_|\__|\__|_|_|_\__,_|_||_|     |___|_||_\_/
+#
+
+# Formato de texto (MINIMESSAGE, LEGACY). LEGACY admite &a y colores hex con &#RRGGBB
+format: LEGACY
+
+# Prefix: se usa en todos los mensajes (%prefix%).
+prefix: '&#6B6B6B&lʙᴀᴛᴍᴀɴɪɴᴠ &8»'
+
+# Texto cuando algo es desconocido (ej. marca del cliente).
+unknown: 'desconocido'
+
+# Alert Format: el formato de todas las alertas.
+# Placeholders: %prefix% %player% %check_name% %violations% %max_violations% %dev%
+alert-format:
+  # Alerta para el staff (con hover y click).
+  alert-format: '%prefix% &8%player%&f está usando &8%check_name% &f(&8%violations%/%max_violations%&f)%dev%'
+
+  # Alerta para la consola.
+  alert-format-console: '%prefix% &8%player%&f ha fallado &8%check_name% &f(&8%violations%/%max_violations%&f)%dev%'
+
+  # Mensaje al pasar el cursor por la alerta.
+  # Placeholders extra: %tps% %world% %client_brand% %ping% %check_description% %check_details% %click_hint%
+  alert-hover-message: |-
+    &8&lʙᴀᴛᴍᴀɴɪɴᴠ
+
+    &fTPS: &8%tps%&8 |&f Mundo: &8%world%&8 |&f Cliente: &8%client_brand%
+
+    &fJugador: &8%player%
+    &fPing: &8%ping%ms
+
+    &fCheck: &8%check_name%
+    &fDescripción: &8%check_description%
+
+    %check_details%
+
+    %click_hint%
+
+  # Línea que se añade al final del hover si el click está activado.
+  click-hint: '&fClick para &8teletransportarte &fa %player%.'
+
+  # Comando al hacer click en la alerta.
+  alert-click-command: /tp %player%
+
+  # Prefijo para checks experimentales. Reemplaza %dev%.
+  dev-prefix: '&f&l *'
+
+  # Formato de cada línea de %check_details% (%main% %secondary% %key% %value%).
+  check-details-line: '%main%%key%: %secondary%%value%'
+
+  # Colores de los detalles del check.
+  check-details-color:
+    main: '&f'
+    secondary: '&8'
+
+# Descripción de cada check (se muestra en el hover).
+checks:
+  fast-hotbar:
+    description: 'Cambios de hotbar demasiado rápidos o instantáneos.'
+  inv-move:
+    description: 'Mover ítems del inventario mientras el jugador se desplaza.'
+  fast-mouse:
+    description: 'Shift + clic mantenido moviendo muchos slots (Mouse Tweaks).'
+
+# Nombres de los datos que aparecen en %check_details%.
+details:
+  actions: 'Acciones'
+  window: 'Ventana'
+  limit: 'Límite'
+  origin: 'Origen'
+  click: 'Clic'
+  slot: 'Slot'
+  speed: 'Velocidad'
+  ticks: 'Ticks moviéndose'
+  chain: 'Cadena'
+  duration: 'Duración'
+  mixed: 'Ítems distintos'
+  answer-yes: 'Sí'
+  answer-no: 'No'
+  origin-slot-changes: 'cambio de slot'
+  origin-number-key-clicks: 'tecla de número en inventario'
+  origin-swap-hands: 'tecla F'
+  unit-speed: 'bloques/tick'
+
+# Alertas
+alerts-enabled: '%prefix% &8Alertas activadas'
+alerts-disabled: '%prefix% &cAlertas desactivadas'
+alerts-enabled-other: '%prefix% &8Alertas activadas para %player%'
+alerts-disabled-other: '%prefix% &cAlertas desactivadas para %player%'
+no-permission-toggle-other: '%prefix% &cNo tienes permiso para cambiar las alertas de otros jugadores.'
+
+# Aviso al sancionar automáticamente.
+punishment-broadcast: '%prefix% &8%player%&f fue sancionado por &8%check_name%&f.'
+
+# Mensajes de comandos
+command-messages:
+  # Mensajes genéricos
+  generic-commands:
+    help: |-
+      &8&lʙᴀᴛᴍᴀɴɪɴᴠ
+      &8/%label% alerts [jugador] &f- Activa/desactiva alertas
+      &8/%label% profile <jugador> &f- Perfil de un jugador
+      &8/%label% stats &f- Estadísticas generales
+      &8/%label% clearlogs <jugador> &f- Borra el historial de un jugador
+      &8/%label% reload &f- Recarga config.yml y messages.yml
+    no-permission: '%prefix% &cNo tienes permiso para usar este comando.'
+    only-players: '%prefix% &cSolo los jugadores pueden usar este comando.'
+    specify-player: '%prefix% &cEspecifica un jugador.'
+    player-not-found: '%prefix% &c%player% no está conectado.'
+    target-never-joined: '%prefix% &cEse jugador no tiene registros.'
+    plugin-reloaded: '%prefix% &8El plugin fue recargado.'
+    unknown-command: '%prefix% &cSubcomando desconocido. Usa &8/%label% help&c.'
+
+  # /batmaninv profile
+  profile-command:
+    # Formato del perfil de un jugador.
+    profile-format:
+      profile-format: |-
+        &8&lʙᴀᴛᴍᴀɴɪɴᴠ
+        &fJugador: &8%player%
+        &fCliente: &8%client_brand%
+        &fPing: &8%ping%ms
+        &fEstado: %safety_status%
+        &fAlertas totales: &8%total_alerts%
+        &fÚltima alerta: &8%last_alert%
+
+        &fInfo:
+        %alert_summary%
+
+        &fSanciones:
+        %punishment_summary%
+
+      # Estado según el total de alertas.
+      status-clean: '&aLimpio'
+      status-suspicious: '&eSospechoso'
+      status-dangerous: '&cPeligroso'
+
+      # Resumen de alertas (una línea por check).
+      alert-summary: '&f&l%check_name% &8%violations%x'
+
+      # Resumen de sanciones.
+      punishment-summary: '&fSancionado por &8&l%check_name% &fel &8%date%'
+
+      no-alerts-found: '&f&o Sin alertas.'
+      no-punishments-found: '&f&o Sin sanciones.'
+      never: 'nunca'
+
+      # Se añade cuando hay más sanciones de las que se muestran (profile.max-punishments-shown).
+      showing-last-punishments: '&f&oMostrando las últimas %amount% sanciones:'
+      and-more-to-be-displayed: '&f&o... y más sin mostrar'
+
+  # /batmaninv stats
+  stats-command:
+    stats-format:
+      stats-format: |-
+        &8&lʙᴀᴛᴍᴀɴɪɴᴠ Stats
+        &f&lSanciones totales: &8%total_punishments%
+        &f&lAlertas totales: &8%total_alerts%
+
+        &8&l> Sanciones <
+        %punishment_summary%
+
+        &8&l> Alertas <
+        %alert_summary%
+
+      punishment-summary: |-
+        &f&lÚltimos 30 días: &8%punishment_last_30%
+        &f&lÚltimos 7 días: &8%punishment_last_7%
+        &f&lÚltimas 24 horas: &8%punishment_last_24h%
+
+      alert-summary: |-
+        &f&lÚltimos 30 días: &8%alerts_last_30%
+        &f&lÚltimos 7 días: &8%alerts_last_7%
+        &f&lÚltimas 24 horas: &8%alerts_last_24h%
+
+      no-punishments-found: '&f&oNo hay sanciones.'
+      no-alerts-found: '&f&oNo hay alertas.'
+
+  # /batmaninv clearlogs
+  clear-logs-command:
+    clearing-logs: '%prefix% &fBorrando registros...'
+    logs-cleared: '%prefix% &8Se borraron %amount% registros de %player% en %duration%ms.'
