@@ -2,6 +2,7 @@
 #   ʙᴀᴛᴍᴀɴɪɴᴠ  -  config.yml
 #   Checks: FastHotbar | InvMove | FastMouse
 #   Los textos (alertas, hover, comandos) están en messages.yml
+#   v1.1: menos falsos positivos (salto, inercia, lag), confirmación de sospechas y reglas nuevas.
 #   Se detecta el COMPORTAMIENTO, no el mod: el servidor solo ve paquetes.
 # ============================================================
 
@@ -33,9 +34,15 @@ settings:
     bedrock-players: true
     # Si el ping supera este valor no se revisa (0 = desactivado).
     ping-above-ms: 600
-    # Si los TPS del servidor bajan de este valor no se revisa (0 = desactivado).
-    # El lag junta paquetes y parece una ráfaga.
+    # Si los TPS del servidor (promedio de los últimos ~5 s) bajan de este valor no se revisa
+    # (0 = desactivado). El lag junta paquetes y parece una ráfaga.
     tps-below: 15.0
+    # Un salto de ping de esta magnitud (ms) indica que los paquetes están llegando en bloques:
+    # se deja de revisar al jugador durante jitter-guard-ms. (0 = desactivado)
+    ping-jump-ms: 50
+    jitter-guard-ms: 1500
+    # Tras teletransportarse / reaparecer / cambiar de mundo no se revisa durante este tiempo.
+    after-teleport-ms: 1500
 
 # Cómo se acumulan las infracciones (VL).
 violations:
@@ -106,16 +113,37 @@ checks:
     alert-after: 1
     cancel-events: true
     commands:
-      - "kick %player% [BatmanInv] %check%"
-    # Más de max-actions acciones dentro de window-ms = infracción.
+      - "kick %player% &8[BatmanInv] &fHas fallado %check%  estaremos vigilandote... -s"
+    # Teclas 1-9 y tecla F: más de max-actions dentro de window-ms = sospecha.
+    # (Un humano no pasa de ~12 pulsaciones por segundo.)
     window-ms: 1000
-    max-actions: 16
-    # burst-actions o más acciones dentro de burst-ms (aprox. 1 tick) = infracción.
-    burst-ms: 50
-    burst-actions: 5
+    max-actions: 20
+    # burst-actions o más acciones dentro de burst-ms = sospecha.
+    burst-ms: 100
+    burst-actions: 6
+    # Hace falta repetir la sospecha 'hits' veces dentro de 'window-ms' para alertar.
+    # Un único pico de lag o de ping ya no genera alerta.
+    confirm:
+      hits: 2
+      window-ms: 5000
+    # Rueda del ratón (cambio al slot contiguo). Umbrales MUCHO más altos a propósito:
+    # una rueda libre puede soltar muchos pasos legítimos en un instante.
+    # El cliente vanilla manda como máximo 1 cambio de slot por tick (20/s).
+    scroll:
+      window-ms: 1000
+      max-actions: 40
+      burst-ms: 100
+      burst-actions: 12
+    # Reorganización instantánea de la hotbar (con el inventario abierto o cerrado, quieto o no):
+    # min-items ítems DISTINTOS de la hotbar cambian de sitio dentro de window-ms.
+    # Con 4 en 150 ms ya no es humano (cada cambio a mano son 2 clics o 1 tecla).
+    rearrange:
+      enabled: true
+      window-ms: 150
+      min-items: 4
     # Qué cuenta como acción de hotbar.
     count:
-      slot-changes: true        # scroll / teclas 1-9 fuera del inventario
+      slot-changes: true        # rueda / teclas 1-9 fuera del inventario (la rueda usa 'scroll')
       number-key-clicks: true   # teclas 1-9 dentro del inventario
       swap-hands: true          # tecla F
 
@@ -123,29 +151,42 @@ checks:
   inv-move:
     enabled: true
     experimental: false
-    max-violations: 5
+    max-violations: 15
     alert-after: 1
     cancel-events: true
     commands:
-      - "kick %player% [BatmanInv] %check%"
+      - "kick %player% &8[BatmanInv] &fHas fallado %check%  estaremos vigilandote... -s"
     # true = solo clics relacionados con la hotbar (slots 0-8, tecla número, tecla F).
     only-hotbar: false
     # Bloques por tick para considerar que el jugador se mueve (caminar ~0.21, sneak ~0.06).
     min-distance: 0.12
     # Ticks seguidos moviéndose antes de contarlo como movimiento real.
-    streak-ticks: 3
+    streak-ticks: 5
     # El último movimiento debe ser de hace menos de esto.
-    window-ms: 100
+    window-ms: 120
+    # Tras saltar / caer / subir un escalón NO se revisa durante este tiempo (impulso del salto).
+    air-grace-ms: 400
+    # En vanilla, con el inventario abierto no hay input y la velocidad BAJA sola.
+    # Si en 'decel-ticks' ticks seguidos la velocidad cae por debajo de 'decel-ratio' x la anterior,
+    # el jugador va por inercia y no se revisa. Quien mantiene la velocidad constante sí.
+    decel-ratio: 0.95
+    decel-ticks: 2
+    # Hace falta 'hits' clics sospechosos dentro de 'window-ms' para alertar:
+    # un clic suelto justo al aterrizar o al frenar ya no genera alerta.
+    confirm:
+      hits: 2
+      window-ms: 3000
     # Tipos de clic que NO se revisan. Ej: [DROP, CONTROL_DROP]
     ignored-click-types: []
     exempt:
       after-hit-ms: 1000   # tras recibir daño/knockback/velocidad (0 = no eximir)
       ice: true            # deslizarse sobre hielo
-      water: true
+      water: true          # agua y lava
       vehicle: true
       gliding: true
       flying: true
       swimming: true
+      climbing: true       # escaleras, enredaderas...
       sneaking: false      # true = ignorar si va agachado
 
   # FastMouse: Mouse Tweaks (shift + clic mantenido arrastrando sobre muchos slots).
@@ -156,11 +197,21 @@ checks:
     alert-after: 1
     cancel-events: true
     commands:
-      - "kick %player% [BatmanInv] %check%"
-    # Tiempo máximo entre shift-clics para considerarlos una misma cadena.
-    max-gap-ms: 75
-    # Shift-clics en slots distintos para marcar infracción.
-    min-chain: 5
+      - "kick %player% &8[BatmanInv] &fHas fallado %check%  estaremos vigilandote... -s"
+    # Tiempo máximo entre dos shift-clics para considerarlos la misma cadena.
+    # (Más alto que el ritmo de la regla rápida a propósito: el servidor procesa por ticks de 50 ms.)
+    max-gap-ms: 110
+    # REGLA RÁPIDA: cadena de min-chain slots DISTINTOS con intervalo MEDIO <= max-avg-gap-ms.
+    # Mouse Tweaks va a ~50 ms; un humano pulsando shift-clic a mano no baja de ~100 ms.
+    min-chain: 6
+    max-avg-gap-ms: 65
+    # REGLA DE ARRASTRE: cadena larga casi toda entre slots VECINOS (izq/der/arriba/abajo)
+    # a ritmo inhumano sostenido. Atrapa Mouse Tweaks aunque otro mod lo frene un poco.
+    drag-detection:
+      enabled: true
+      min-chain: 8
+      min-adjacent-ratio: 0.85
+      max-avg-gap-ms: 110
     # Shift + doble clic: manda clics del MISMO ítem casi en el mismo instante.
     # Una cadena de un solo tipo de ítem dentro de este tiempo se considera doble clic.
     double-click-burst-ms: 100

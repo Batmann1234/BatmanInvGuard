@@ -59,7 +59,7 @@ alert-format:
 # Descripción de cada check (se muestra en el hover).
 checks:
   fast-hotbar:
-    description: 'Cambios de hotbar demasiado rápidos o instantáneos.'
+    description: 'Cambios de hotbar demasiado rápidos o varios ítems de la hotbar reorganizados al instante.'
   inv-move:
     description: 'Mover ítems del inventario mientras el jugador se desplaza.'
   fast-mouse:
@@ -83,6 +83,11 @@ details:
   origin-slot-changes: 'cambio de slot'
   origin-number-key-clicks: 'tecla de número en inventario'
   origin-swap-hands: 'tecla F'
+  origin-scroll: 'rueda del ratón'
+  origin-rearrange: 'reorganizar hotbar'
+  items: 'Ítems movidos'
+  avg-gap: 'Intervalo medio'
+  adjacent: 'Slots vecinos'
   unit-speed: 'bloques/tick'
 
 # Alertas

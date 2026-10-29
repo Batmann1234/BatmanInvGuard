@@ -66,10 +66,19 @@ public final class ViolationManager {
         }
         int vl = q.size();
 
-        plugin.storage().recordAlert(p.getUniqueId(), p.getName(), check, now);
+        // El historial es secundario: si falla, la alerta y la sanción deben seguir funcionando.
+        try {
+            plugin.storage().recordAlert(p.getUniqueId(), p.getName(), check, now);
+        } catch (Exception ex) {
+            plugin.getLogger().warning("No se pudo guardar la alerta de " + p.getName() + ": " + ex);
+        }
 
         if (s.alertsEnabled && vl >= cc.alertAfter) {
-            sendAlert(p, check, cc, vl, details);
+            try {
+                sendAlert(p, check, cc, vl, details);
+            } catch (Exception ex) {
+                plugin.getLogger().warning("No se pudo enviar la alerta de " + p.getName() + ": " + ex);
+            }
         }
 
         if (s.punishEnabled && vl >= cc.maxViolations && !cc.commands.isEmpty()) {
@@ -134,9 +143,13 @@ public final class ViolationManager {
 
         for (Player staff : Bukkit.getOnlinePlayers()) {
             if (staff.hasPermission("batmaninv.alerts") && !muted.contains(staff.getUniqueId())) {
-                staff.sendMessage(alert);
-                if (s.soundEnabled) {
-                    staff.playSound(staff.getLocation(), s.soundName, s.soundVolume, s.soundPitch);
+                try {
+                    staff.sendMessage(alert);
+                    if (s.soundEnabled) {
+                        staff.playSound(staff.getLocation(), s.soundName, s.soundVolume, s.soundPitch);
+                    }
+                } catch (Exception ex) {
+                    plugin.getLogger().warning("Alerta no entregada a " + staff.getName() + ": " + ex);
                 }
             }
         }
