@@ -134,13 +134,21 @@ checks:
       max-actions: 40
       burst-ms: 100
       burst-actions: 12
-    # Reorganización instantánea de la hotbar (con el inventario abierto o cerrado, quieto o no):
-    # min-items ítems DISTINTOS de la hotbar cambian de sitio dentro de window-ms.
-    # Con 4 en 150 ms ya no es humano (cada cambio a mano son 2 clics o 1 tecla).
+    # Reorganización de la hotbar a velocidad inhumana (inventario abierto o cerrado, quieto o no).
+    # Ordenar la hotbar a mano con 1-2-3-4 es legítimo (los dedos "en rodillo" dan ~40-60 ms entre
+    # teclas), así que solo cuentan ÍTEMS DISTINTOS y la sospecha debe REPETIRSE (confirm-hits)
+    # dentro de confirm.window-ms para alertar. Un solo grupo raro (lag) no alerta.
     rearrange:
       enabled: true
-      window-ms: 150
-      min-items: 4
+      # Nivel rápido: min-items distintos dentro de window-ms (>= 50 acciones/s, imposible a mano).
+      window-ms: 100
+      min-items: 5
+      # Nivel instantáneo: varios ítems distintos prácticamente en el mismo tick (scripts/mods).
+      instant:
+        enabled: true
+        window-ms: 20
+        min-items: 4
+      confirm-hits: 2
     # Qué cuenta como acción de hotbar.
     count:
       slot-changes: true        # rueda / teclas 1-9 fuera del inventario (la rueda usa 'scroll')

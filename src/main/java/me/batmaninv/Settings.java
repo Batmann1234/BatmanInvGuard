@@ -90,6 +90,10 @@ public final class Settings {
     public boolean hbRearrangeEnabled;
     public int hbRearrangeWindowMs;
     public int hbRearrangeMin;
+    public int hbRearrangeConfirmHits;
+    public boolean hbInstantEnabled;
+    public int hbInstantWindowMs;
+    public int hbInstantMin;
 
     // InvMove
     public boolean imOnlyHotbar;
@@ -212,8 +216,12 @@ public final class Settings {
         hbScrollBurstMs = c.getInt(h + "scroll.burst-ms", 100);
         hbScrollBurstActions = c.getInt(h + "scroll.burst-actions", 12);
         hbRearrangeEnabled = c.getBoolean(h + "rearrange.enabled", true);
-        hbRearrangeWindowMs = c.getInt(h + "rearrange.window-ms", 150);
-        hbRearrangeMin = c.getInt(h + "rearrange.min-items", 4);
+        hbRearrangeWindowMs = c.getInt(h + "rearrange.window-ms", 100);
+        hbRearrangeMin = c.getInt(h + "rearrange.min-items", 5);
+        hbRearrangeConfirmHits = c.getInt(h + "rearrange.confirm-hits", 2);
+        hbInstantEnabled = c.getBoolean(h + "rearrange.instant.enabled", true);
+        hbInstantWindowMs = c.getInt(h + "rearrange.instant.window-ms", 20);
+        hbInstantMin = c.getInt(h + "rearrange.instant.min-items", 4);
         hbCountSlotChanges = c.getBoolean(h + "count.slot-changes", true);
         hbCountNumberKeys = c.getBoolean(h + "count.number-key-clicks", true);
         hbCountSwapHands = c.getBoolean(h + "count.swap-hands", true);

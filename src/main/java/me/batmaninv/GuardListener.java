@@ -117,11 +117,11 @@ public final class GuardListener implements Listener {
      * Exige varias sospechas seguidas antes de alertar. Un evento raro aislado
      * (lag, un clic justo al aterrizar...) ya no genera alerta.
      */
-    private boolean confirm(PlayerData d, Check check, long now, int hits, int windowMs) {
+    private boolean confirm(PlayerData d, String key, long now, int hits, int windowMs) {
         if (hits <= 1) {
             return true;
         }
-        ArrayDeque<Long> q = d.suspicion.computeIfAbsent(check, k -> new ArrayDeque<>());
+        ArrayDeque<Long> q = d.suspicion.computeIfAbsent(key, k -> new ArrayDeque<>());
         q.addLast(now);
         while (!q.isEmpty() && now - q.peekFirst() > windowMs) {
             q.pollFirst();
@@ -381,7 +381,7 @@ public final class GuardListener implements Listener {
         if (!over && !burst) {
             return false;
         }
-        if (!confirm(d, Check.FAST_HOTBAR, now, s.hbConfirmHits, s.hbConfirmWindowMs)) {
+        if (!confirm(d, "hotbar", now, s.hbConfirmHits, s.hbConfirmWindowMs)) {
             return false;
         }
         flag(p, d, Check.FAST_HOTBAR, Messages.ph(
@@ -409,7 +409,7 @@ public final class GuardListener implements Listener {
         if (!over && !burst) {
             return false;
         }
-        if (!confirm(d, Check.FAST_HOTBAR, now, s.hbConfirmHits, s.hbConfirmWindowMs)) {
+        if (!confirm(d, "hotbar", now, s.hbConfirmHits, s.hbConfirmWindowMs)) {
             return false;
         }
         flag(p, d, Check.FAST_HOTBAR, Messages.ph(
@@ -421,31 +421,55 @@ public final class GuardListener implements Listener {
     }
 
     /**
-     * Reorganización instantánea de la hotbar: varios ítems DISTINTOS de la hotbar cambian de sitio
-     * en una ventana minúscula (inventario abierto o no: el servidor solo ve los clics).
+     * Reorganización de la hotbar a velocidad inhumana (inventario abierto o no: el servidor solo ve clics).
+     * Ordenar la hotbar a mano con 1-2-3-4 en "rodillo" es legítimo (~40-60 ms entre teclas), así que hay
+     * dos niveles, ambos con ÍTEMS DISTINTOS y ambos necesitan repetirse (confirm-hits) para alertar:
+     *  - Rápida: min-items distintos dentro de window-ms (ritmo imposible de sostener con los dedos).
+     *  - Instantánea: instant.min-items distintos dentro de ~1 tick (varios ítems "a la vez").
      */
     private boolean registerRearrange(Player p, PlayerData d, long now, int slotKey) {
         Settings s = plugin.settings();
         Messages m = plugin.messages();
 
         d.shuffle.addLast(new long[]{now, slotKey});
-        while (!d.shuffle.isEmpty() && now - d.shuffle.peekFirst()[0] > s.hbRearrangeWindowMs) {
+        long keep = Math.max(s.hbRearrangeWindowMs, s.hbInstantEnabled ? s.hbInstantWindowMs : 0);
+        while (!d.shuffle.isEmpty() && now - d.shuffle.peekFirst()[0] > keep) {
             d.shuffle.pollFirst();
         }
-        Set<Long> distinct = new HashSet<>();
+        Set<Long> rapidSlots = new HashSet<>();
+        Set<Long> instantSlots = new HashSet<>();
+        long rapidStart = now;
+        long instantStart = now;
         for (long[] a : d.shuffle) {
-            distinct.add(a[1]);
+            long age = now - a[0];
+            if (age <= s.hbRearrangeWindowMs) {
+                rapidSlots.add(a[1]);
+                rapidStart = Math.min(rapidStart, a[0]);
+            }
+            if (s.hbInstantEnabled && age <= s.hbInstantWindowMs) {
+                instantSlots.add(a[1]);
+                instantStart = Math.min(instantStart, a[0]);
+            }
         }
-        int items = distinct.size();
-        if (items < s.hbRearrangeMin) {
+        boolean rapid = rapidSlots.size() >= s.hbRearrangeMin;
+        boolean instant = s.hbInstantEnabled && instantSlots.size() >= s.hbInstantMin;
+        if (!rapid && !instant) {
             return false;
         }
-        long span = now - d.shuffle.peekFirst()[0];
-        d.shuffle.clear();
+        int items = instant ? instantSlots.size() : rapidSlots.size();
+        long span = now - (instant ? instantStart : rapidStart);
+        String limit = instant
+                ? s.hbInstantMin + " / " + s.hbInstantWindowMs + "ms"
+                : s.hbRearrangeMin + " / " + s.hbRearrangeWindowMs + "ms";
+        d.shuffle.clear(); // este grupo ya se evaluó: el siguiente tiene que ser uno nuevo
+
+        if (!confirm(d, "rearrange", now, s.hbRearrangeConfirmHits, s.hbConfirmWindowMs)) {
+            return false;
+        }
         flag(p, d, Check.FAST_HOTBAR, Messages.ph(
                 m.detail("items"), String.valueOf(items),
                 m.detail("window"), span + "ms",
-                m.detail("limit"), s.hbRearrangeMin + " / " + s.hbRearrangeWindowMs + "ms",
+                m.detail("limit"), limit,
                 m.detail("origin"), m.detail("origin-rearrange")));
         return true;
     }
@@ -529,7 +553,7 @@ public final class GuardListener implements Listener {
                 && !s.imIgnoredClicks.contains(ct)
                 && isMoving(p, d, now)
                 && (!s.imOnlyHotbar || hotbarRelated(e, ct))
-                && confirm(d, Check.INV_MOVE, now, s.imConfirmHits, s.imConfirmWindowMs)) {
+                && confirm(d, "inv-move", now, s.imConfirmHits, s.imConfirmWindowMs)) {
             flag(p, d, Check.INV_MOVE, Messages.ph(
                     m.detail("click"), ct.name(),
                     m.detail("slot"), e.getSlotType().name(),

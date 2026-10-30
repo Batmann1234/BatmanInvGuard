@@ -41,11 +41,16 @@ Pon `settings.cancel-events: false`, prueba con y sin Mouse Tweaks, revisa las a
   (`decel-ratio`/`decel-ticks`: en vanilla la velocidad baja sola sin input), ni escaleras/lava/teletransportes.
   Exige 2 clics sospechosos seguidos (`confirm`).
 - **FastHotbar**: la rueda del ratón (slot contiguo) tiene umbrales propios y mucho más altos (`scroll`);
-  teclas/F con umbrales más realistas y confirmación. Nueva regla `rearrange`: 4+ ítems distintos de la
-  hotbar cambian de sitio en 150 ms.
+  teclas/F con umbrales más realistas y confirmación. Nueva regla `rearrange` (ver abajo).
 - **FastMouse**: intervalo *medio* en vez de un hueco fijo (robusto a los ticks del servidor), slots
   distintos obligatorios y regla de arrastre por slots vecinos (`drag-detection`).
 - **Exenciones**: TPS de los últimos ~5 s (antes promedio de 1 min, que dejaba los checks apagados minutos
   tras un pico de lag), guarda de jitter de ping, y pausa tras teletransporte/respawn/cambio de mundo.
 - Un fallo al guardar el historial o enviar una alerta ya no puede cortar las alertas de un jugador.
 - Con `settings.debug: true` se registra en consola cuándo y por qué un jugador pasa a estar exento.
+
+## Ajuste v1.1.1: ordenar la hotbar con 1-2-3-4
+Ordenar la hotbar a mano con las teclas numéricas es legítimo (dedos en "rodillo": ~40-60 ms entre teclas), y
+la regla `rearrange` original (4 ítems en 150 ms) lo marcaba. Ahora:
+- Nivel rápido: 5 ítems distintos en 100 ms. Nivel instantáneo: 4 ítems distintos en 20 ms (~1 tick).
+- La sospecha debe repetirse 2 veces en 5 s (`confirm-hits`); un único grupo (p. ej. paquetes juntados por lag) no alerta.

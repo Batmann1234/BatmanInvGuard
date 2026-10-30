@@ -4,6 +4,8 @@ import org.bukkit.Material;
 
 import java.util.ArrayDeque;
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -40,7 +42,7 @@ final class PlayerData {
     final Set<Integer> chainSlots = new HashSet<>();
 
     // Confirmación de sospechas (evita alertar por un único evento raro)
-    final EnumMap<Check, ArrayDeque<Long>> suspicion = new EnumMap<>(Check.class);
+    final Map<String, ArrayDeque<Long>> suspicion = new HashMap<>();
 
     // Infracciones
     final EnumMap<Check, ArrayDeque<Long>> vl = new EnumMap<>(Check.class);
