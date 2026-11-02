@@ -254,12 +254,20 @@ checks:
       min-chain: 8
       min-adjacent-ratio: 0.85
       max-avg-gap-ms: 110
-    # Shift + doble clic: el cliente manda un shift-clic por cada pila del MISMO ítem a la vez.
-    # Una cadena de ítems IDÉNTICOS (mismo ítem repetido: 20 tótems, 20 espadas iguales...) NO se marca,
-    # sin importar la velocidad: da el mismo resultado que el doble clic de vanilla y su duración depende
-    # de cuánto tarde el servidor en procesarla. Solo se marcan cadenas con ítems DISTINTOS.
-    # false = también se marcan las cadenas de ítems idénticos.
+    # Shift + doble clic: el cliente manda un shift-clic por cada pila del MISMO ítem, todos a la vez.
+    # true  = una cadena de ítems IDÉNTICOS (20 tótems iguales...) NO se marca nunca, sin importar la velocidad.
+    # false = MODO ESTRICTO: shift + doble clic (todo en el mismo tick) sigue sin marcarse, pero llevarse las
+    #         pilas idénticas de 1 en 1 o de 2 en 2 y muy rápido (Mouse Tweaks) SÍ se marca.
     allow-double-click-burst: true
+    # Opciones del modo estricto (allow-double-click-burst: false):
+    identical:
+      # true = el trato especial solo aplica a ítems sin nombre ni lore (tótems, bloques, comida...).
+      #        Los ítems con nombre/lore (armas custom, espadas...) se juzgan como cualquier cadena.
+      plain-items-only: true
+      # Un shift + doble clic llega entero en el mismo tick del servidor (1-2 como mucho si se parte).
+      # Una cadena de ítems idénticos solo se juzga cuando abarca al menos este número de ticks distintos.
+      # (Subirlo = más permisivo. 3 = a partir de ~100 ms de duración.)
+      min-ticks: 3
     # Tras una tanda de al menos este número de ítems idénticos, un clic en un ítem distinto empieza una
     # cadena nueva (no se mezcla con el doble clic anterior).
     identical-run-min: 3

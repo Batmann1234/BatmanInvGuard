@@ -59,8 +59,13 @@ final class PlayerData {
         lastFastMove = 0;
     }
 
+    int chainTicks;              // ticks del servidor distintos que abarca la cadena
+    int chainLastTick = -1;
+
     void resetChain() {
         chainCount = 0;
+        chainTicks = 0;
+        chainLastTick = -1;
         chainAdj = 0;
         chainMixed = false;
         chainRef = null;

@@ -91,3 +91,10 @@ Cada compilación en GitHub sube sola el número de versión: `1.1`, `1.2`, `1.3
 - Cada push a `main` crea un **Release** `v1.N` con el jar (borra el paso *Release* de `build.yml` si no lo quieres).
 - Para saltar a otra versión, pon un tag (ej. `v2.0`) y se usa ese número, o cambia `MAJOR` en `build.yml`.
 - En local, `mvn clean package` usa `<revision>` del `pom.xml`; para otra: `mvn clean package -Drevision=1.9`.
+
+### FastMouse en modo estricto (`allow-double-click-burst: false`)
+- Shift + doble clic llega **entero en el mismo tick del servidor**, así que una cadena de ítems idénticos sin
+  nombre/lore (tótems, bloques, comida...) solo se juzga si abarca `identical.min-ticks` ticks distintos (3).
+  Llevarse las pilas de 1 en 1 o de 2 en 2 y muy rápido sí se marca.
+- Ítems con nombre/lore (armas custom, espadas...) se juzgan como cualquier cadena (`identical.plain-items-only`).
+- `violations.txt` guarda el tick del servidor de cada clic para poder demostrar las ráfagas.

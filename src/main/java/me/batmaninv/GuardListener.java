@@ -23,6 +23,7 @@ import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.player.PlayerVelocityEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayDeque;
 import java.util.HashMap;
@@ -605,6 +606,15 @@ public final class GuardListener implements Listener {
         }
     }
 
+    /** Ítem "normal": sin nombre personalizado ni lore (tótems, bloques, comida...). */
+    private static boolean isPlain(ItemStack it) {
+        if (it == null || !it.hasItemMeta()) {
+            return true;
+        }
+        ItemMeta meta = it.getItemMeta();
+        return !meta.hasDisplayName() && !meta.hasLore();
+    }
+
     private boolean hotbarRelated(InventoryClickEvent e, ClickType ct) {
         return ct == ClickType.NUMBER_KEY
                 || ct == ClickType.SWAP_OFFHAND
@@ -654,6 +664,11 @@ public final class GuardListener implements Listener {
         }
         d.chainCount++;
         d.chainSlots.add(slot);
+        int tick = Bukkit.getCurrentTick();
+        if (tick != d.chainLastTick) {
+            d.chainTicks++;
+            d.chainLastTick = tick;
+        }
         if (d.chainRef != null && !cur.isSimilar(d.chainRef)) {
             d.chainMixed = true;
         }
@@ -665,11 +680,19 @@ public final class GuardListener implements Listener {
             return false;
         }
 
-        // Cadena de ítems IDÉNTICOS (misma pila repetida): es lo que hace shift + doble clic en vanilla,
-        // da el mismo resultado que un mod, y su duración depende de cuánto tarde el servidor en procesarla
-        // (otros plugins escuchando el clic), así que NO se juzga por tiempo. Solo se marcan cadenas MEZCLADAS.
-        if (s.fmAllowBurst && !d.chainMixed) {
-            return false;
+        // Cadena de ítems IDÉNTICOS (misma pila repetida).
+        if (!d.chainMixed) {
+            // Modo permisivo: nunca se marca (es lo que hace shift + doble clic en vanilla).
+            if (s.fmAllowBurst) {
+                return false;
+            }
+            // Modo estricto: shift + doble clic llega TODO en el mismo tick del servidor (como mucho 1-2 si la
+            // ráfaga se parte), así que una cadena de ítems idénticos solo se juzga si dura varios ticks
+            // distintos: llevarse las pilas de 1 en 1 o de 2 en 2 y muy rápido (Mouse Tweaks).
+            // Los ítems con nombre/lore (armas custom...) no tienen este trato y se juzgan como cualquier cadena.
+            if ((!s.fmIdenticalPlainOnly || isPlain(d.chainRef)) && d.chainTicks < s.fmIdenticalMinTicks) {
+                return false;
+            }
         }
         long span = now - d.chainStart;
 
@@ -689,6 +712,7 @@ public final class GuardListener implements Listener {
                 m.detail("click"), ct.name(),
                 m.detail("chain"), n + " (" + distinct + " slots)",
                 m.detail("duration"), span + "ms",
+                m.detail("chain-ticks"), String.valueOf(d.chainTicks),
                 m.detail("avg-gap"), String.format(Locale.ROOT, "%.0fms", avgGap),
                 m.detail("adjacent"), String.format(Locale.ROOT, "%.0f%%", adjRatio * 100.0),
                 m.detail("mixed"), d.chainMixed ? m.detail("answer-yes") : m.detail("answer-no")));

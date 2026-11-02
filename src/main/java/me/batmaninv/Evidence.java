@@ -183,6 +183,7 @@ public final class Evidence {
                 sb.append(" ítem-hotbar=").append(describe(p.getInventory().getItem(b)));
             }
         }
+        sb.append(" | tick=").append(Bukkit.getCurrentTick());
         sb.append(" | ping=").append(ping).append("ms");
         if (d.lastFastMove > 0) {
             sb.append(String.format(Locale.ROOT, " | mov: racha=%d vel=%.2f hace=%dms",

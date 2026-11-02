@@ -139,6 +139,8 @@ public final class Settings {
     public int fmMinChain;
     public int fmIdenticalRunMin;
     public boolean fmAllowBurst;
+    public boolean fmIdenticalPlainOnly;
+    public int fmIdenticalMinTicks;
     public int fmSameSlotMs;
     public boolean fmShiftLeft;
     public boolean fmShiftRight;
@@ -291,6 +293,8 @@ public final class Settings {
         fmDragMaxAvgGapMs = c.getInt(f + "drag-detection.max-avg-gap-ms", 110);
         fmIdenticalRunMin = c.getInt(f + "identical-run-min", 3);
         fmAllowBurst = c.getBoolean(f + "allow-double-click-burst", true);
+        fmIdenticalPlainOnly = c.getBoolean(f + "identical.plain-items-only", true);
+        fmIdenticalMinTicks = Math.max(1, c.getInt(f + "identical.min-ticks", 3));
         fmSameSlotMs = c.getInt(f + "same-slot-repeat-ms", 400);
         fmShiftLeft = c.getBoolean(f + "count.shift-left", true);
         fmShiftRight = c.getBoolean(f + "count.shift-right", true);
