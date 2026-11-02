@@ -6,7 +6,7 @@ description: Detecta FastHotbar, InvMove y FastMouse (Mouse Tweaks).
 commands:
   batmaninv:
     description: Comandos de BatmanInv
-    usage: /<command> <help|reload|alerts|profile|stats|clearlogs>
+    usage: /<command> <help|reload|alerts|profile|stats|clearlogs|evidence>
     aliases: [binv]
 permissions:
   batmaninv.admin:
@@ -23,6 +23,9 @@ permissions:
     default: op
   batmaninv.stats:
     description: Ver las estadísticas generales
+    default: op
+  batmaninv.evidence:
+    description: Guardar las pruebas de un jugador en violations.txt
     default: op
   batmaninv.bypass:
     description: No es revisado por los checks

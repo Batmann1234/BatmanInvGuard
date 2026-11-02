@@ -1,6 +1,6 @@
 package me.batmaninv;
 
-import org.bukkit.Material;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayDeque;
 import java.util.EnumMap;
@@ -37,9 +37,12 @@ final class PlayerData {
     long chainStart;
     long lastShiftTime;
     int lastShiftSlot = -1;
-    Material chainType;
+    ItemStack chainRef;          // primer ítem de la cadena (para saber si todos son idénticos)
     boolean chainMixed;
     final Set<Integer> chainSlots = new HashSet<>();
+
+    // Pruebas (violations.txt): últimas acciones del jugador
+    final ArrayDeque<EvidenceEvent> evidence = new ArrayDeque<>();
 
     // Confirmación de sospechas (evita alertar por un único evento raro)
     final Map<String, ArrayDeque<Long>> suspicion = new HashMap<>();
@@ -60,7 +63,7 @@ final class PlayerData {
         chainCount = 0;
         chainAdj = 0;
         chainMixed = false;
-        chainType = null;
+        chainRef = null;
         lastShiftSlot = -1;
         chainSlots.clear();
     }

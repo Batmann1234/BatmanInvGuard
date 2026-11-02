@@ -110,6 +110,7 @@ command-messages:
       &8/%label% profile <jugador> &f- Perfil de un jugador
       &8/%label% stats &f- Estadísticas generales
       &8/%label% clearlogs <jugador> &f- Borra el historial de un jugador
+      &8/%label% evidence <jugador> &f- Guarda sus últimas acciones en violations.txt
       &8/%label% reload &f- Recarga config.yml y messages.yml
     no-permission: '%prefix% &cNo tienes permiso para usar este comando.'
     only-players: '%prefix% &cSolo los jugadores pueden usar este comando.'
@@ -183,6 +184,12 @@ command-messages:
 
       no-punishments-found: '&f&oNo hay sanciones.'
       no-alerts-found: '&f&oNo hay alertas.'
+
+  # /batmaninv evidence
+  evidence-command:
+    saved: '%prefix% &8Pruebas de &f%player% &8guardadas en &fviolations.txt &8(ID: &f%proof_id%&8).'
+    disabled: '%prefix% &cLas pruebas están desactivadas (evidence.enabled: false en config.yml).'
+    no-data: '%prefix% &c%player% no tiene acciones recientes registradas.'
 
   # /batmaninv clearlogs
   clear-logs-command:

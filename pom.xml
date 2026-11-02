@@ -6,11 +6,13 @@
 
     <groupId>me.batmaninv</groupId>
     <artifactId>BatmanInv</artifactId>
-    <version>1.1.0</version>
+    <version>${revision}</version>
     <packaging>jar</packaging>
     <name>BatmanInv</name>
 
     <properties>
+        <!-- Versión para compilar en local. En GitHub Actions se reemplaza solo (-Drevision=1.N) -->
+        <revision>1.2.0</revision>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>

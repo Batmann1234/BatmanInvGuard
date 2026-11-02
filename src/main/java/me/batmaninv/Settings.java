@@ -62,6 +62,19 @@ public final class Settings {
     public boolean punishBroadcast;
     public boolean punishBroadcastStaffOnly;
 
+    // evidence (violations.txt)
+    public boolean evEnabled;
+    public boolean evEachViolation;
+    public boolean evOnPunishment;
+    public int evBufferMax;
+    public int evKeepSeconds;
+    public int evReportMaxEvents;
+    public int evViolationContext;
+    public boolean evHotbar;
+    public boolean evItemNames;
+    public int evPingWindowSeconds;
+    public int evMaxFileMb;
+
     // storage
     public boolean storageEnabled;
     public int autosaveMinutes;
@@ -124,7 +137,7 @@ public final class Settings {
     public double fmDragAdjacency;
     public int fmDragMaxAvgGapMs;
     public int fmMinChain;
-    public int fmBurstMs;
+    public int fmIdenticalRunMin;
     public boolean fmAllowBurst;
     public int fmSameSlotMs;
     public boolean fmShiftLeft;
@@ -180,6 +193,18 @@ public final class Settings {
         punishEnabled = c.getBoolean("punishments.enabled", false);
         punishBroadcast = c.getBoolean("punishments.broadcast", true);
         punishBroadcastStaffOnly = c.getBoolean("punishments.broadcast-staff-only", false);
+
+        evEnabled = c.getBoolean("evidence.enabled", true);
+        evEachViolation = c.getBoolean("evidence.log-each-violation", true);
+        evOnPunishment = c.getBoolean("evidence.log-on-punishment", true);
+        evBufferMax = Math.max(10, c.getInt("evidence.buffer.max-events", 400));
+        evKeepSeconds = Math.max(5, c.getInt("evidence.buffer.keep-seconds", 120));
+        evReportMaxEvents = c.getInt("evidence.report.max-events", 300);
+        evViolationContext = c.getInt("evidence.report.violation-context", 20);
+        evHotbar = c.getBoolean("evidence.record.hotbar-events", true);
+        evItemNames = c.getBoolean("evidence.record.item-names", true);
+        evPingWindowSeconds = Math.max(1, c.getInt("evidence.ping-window-seconds", 15));
+        evMaxFileMb = c.getInt("evidence.max-file-size-mb", 20);
 
         storageEnabled = c.getBoolean("storage.enabled", true);
         autosaveMinutes = c.getInt("storage.autosave-minutes", 5);
@@ -264,7 +289,7 @@ public final class Settings {
         fmDragMinChain = c.getInt(f + "drag-detection.min-chain", 8);
         fmDragAdjacency = c.getDouble(f + "drag-detection.min-adjacent-ratio", 0.85);
         fmDragMaxAvgGapMs = c.getInt(f + "drag-detection.max-avg-gap-ms", 110);
-        fmBurstMs = c.getInt(f + "double-click-burst-ms", 100);
+        fmIdenticalRunMin = c.getInt(f + "identical-run-min", 3);
         fmAllowBurst = c.getBoolean(f + "allow-double-click-burst", true);
         fmSameSlotMs = c.getInt(f + "same-slot-repeat-ms", 400);
         fmShiftLeft = c.getBoolean(f + "count.shift-left", true);

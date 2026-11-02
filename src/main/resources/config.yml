@@ -2,6 +2,7 @@
 #   ʙᴀᴛᴍᴀɴɪɴᴠ  -  config.yml
 #   Checks: FastHotbar | InvMove | FastMouse
 #   Los textos (alertas, hover, comandos) están en messages.yml
+#   v1.2: pruebas en violations.txt, %ping% en las sanciones y shift + doble clic ya no se marca.
 #   v1.1: menos falsos positivos (salto, inercia, lag), confirmación de sospechas y reglas nuevas.
 #   Se detecta el COMPORTAMIENTO, no el mod: el servidor solo ve paquetes.
 # ============================================================
@@ -79,6 +80,34 @@ punishments:
   # true = solo lo ve el staff con batmaninv.alerts.
   broadcast-staff-only: false
 
+# ------------------------------------------------------------
+#  PRUEBAS  (plugins/BatmanInv/violations.txt)
+#  Guarda TODO lo que hizo el jugador antes de la infracción/sanción: cada clic, el ítem agarrado,
+#  cómo lo agarró (shift, tecla de número, doble clic...), los milisegundos entre acciones, su ping, etc.
+#  La escritura es en otro hilo: no da lag.
+# ------------------------------------------------------------
+evidence:
+  enabled: true
+  # Escribe un bloque por CADA infracción (con las últimas acciones del jugador).
+  log-each-violation: true
+  # Escribe el informe COMPLETO cuando se sanciona (necesita punishments.enabled: true).
+  # Se identifica con un ID de prueba (%proof_id% en el motivo del ban).
+  log-on-punishment: true
+  # Memoria: últimas acciones que se recuerdan de cada jugador.
+  buffer:
+    max-events: 400
+    keep-seconds: 120
+  report:
+    max-events: 300         # acciones que entran en el informe de sanción
+    violation-context: 20   # acciones que entran en cada bloque de infracción
+  record:
+    hotbar-events: true     # cambios de slot de hotbar y tecla F
+    item-names: true        # nombre del ítem (útil para los ítems de MythicMobs)
+  # Ventana (segundos) para calcular %avg_ping% y %max_ping%.
+  ping-window-seconds: 15
+  # Al superar este tamaño violations.txt se archiva como violations-<fecha>.txt (0 = nunca).
+  max-file-size-mb: 20
+
 # Historial usado por /batmaninv profile, stats y clearlogs (se guarda en data.yml).
 storage:
   enabled: true
@@ -101,7 +130,12 @@ profile:
 #   max-violations  VL necesarias para sancionar (también se muestra como x/max en la alerta)
 #   alert-after     VL mínimas para enviar alerta
 #   cancel-events   cancela la acción detectada (necesita settings.cancel-events: true)
-#   commands        comandos de sanción (consola). %player% y %check%
+#   commands        comandos de sanción (consola). Placeholders:
+#                     %player%  %check%  %ping% (ping al sancionar)  %avg_ping%  %max_ping%
+#                     %vl%  %max_violations%  %tps%  %client_brand%  %world%
+#                     %proof_id% (ID del informe en violations.txt)  %details% (datos de la detección)
+#                   Ejemplo de ban:
+#                     - "ban %player% [BatmanInv] %check% | Ping: %ping%ms (prom. %avg_ping%ms) | Prueba: %proof_id%"
 # ------------------------------------------------------------
 checks:
 
@@ -220,11 +254,15 @@ checks:
       min-chain: 8
       min-adjacent-ratio: 0.85
       max-avg-gap-ms: 110
-    # Shift + doble clic: manda clics del MISMO ítem casi en el mismo instante.
-    # Una cadena de un solo tipo de ítem dentro de este tiempo se considera doble clic.
-    double-click-burst-ms: 100
-    # true = shift + doble clic permitido (recomendado). false = también se marca.
+    # Shift + doble clic: el cliente manda un shift-clic por cada pila del MISMO ítem a la vez.
+    # Una cadena de ítems IDÉNTICOS (mismo ítem repetido: 20 tótems, 20 espadas iguales...) NO se marca,
+    # sin importar la velocidad: da el mismo resultado que el doble clic de vanilla y su duración depende
+    # de cuánto tarde el servidor en procesarla. Solo se marcan cadenas con ítems DISTINTOS.
+    # false = también se marcan las cadenas de ítems idénticos.
     allow-double-click-burst: true
+    # Tras una tanda de al menos este número de ítems idénticos, un clic en un ítem distinto empieza una
+    # cadena nueva (no se mezcla con el doble clic anterior).
+    identical-run-min: 3
     # Repetir el mismo slot dentro de este tiempo no cuenta (doble clic normal).
     same-slot-repeat-ms: 400
     count:

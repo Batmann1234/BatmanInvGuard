@@ -14,6 +14,7 @@ Plugin para Paper/Purpur 1.21.x. Detecta el **comportamiento** típico de mods d
 - `config.yml`: umbrales, exenciones, sanciones y opciones de cada check.
 - `messages.yml`: alertas, hover, comandos (formato LEGACY o MINIMESSAGE).
 - `data.yml`: historial (se genera solo).
+- `violations.txt`: **pruebas** de cada infracción y sanción (se genera solo).
 
 ## Comandos (`/batmaninv`, alias `/binv`)
 | Comando | Permiso |
@@ -22,6 +23,7 @@ Plugin para Paper/Purpur 1.21.x. Detecta el **comportamiento** típico de mods d
 | `/batmaninv profile <jugador>` | `batmaninv.profile` |
 | `/batmaninv stats` | `batmaninv.stats` |
 | `/batmaninv clearlogs <jugador>` | `batmaninv.admin` |
+| `/batmaninv evidence <jugador>` | `batmaninv.evidence` |
 | `/batmaninv reload` | `batmaninv.admin` |
 
 `batmaninv.bypass` exime a un jugador.
@@ -29,14 +31,14 @@ Plugin para Paper/Purpur 1.21.x. Detecta el **comportamiento** típico de mods d
 ## Compilar en GitHub
 1. Sube esta carpeta a un repositorio (rama `main`).
 2. **Actions → Build**: descarga el `.jar` desde **Artifacts**.
-3. Un tag `v1.1.0` publica el jar en un Release.
+3. Un tag `v1.2.0` publica el jar en un Release.
 
-Local: `mvn clean package` (Java 21) → `target/BatmanInv-1.1.0.jar`.
+Local: `mvn clean package` (Java 21) → `target/BatmanInv-1.2.0.jar`.
 
 ## Ajustar umbrales
 Pon `settings.cancel-events: false`, prueba con y sin Mouse Tweaks, revisa las alertas y ajusta. Luego vuelve a `true`.
 
-## Cambios v1.1.0 (menos falsos positivos)
+## Cambios v1.2.0 (menos falsos positivos)
 - **InvMove**: ya no marca el impulso de un salto (`air-grace-ms`), ni la inercia al abrir el inventario
   (`decel-ratio`/`decel-ticks`: en vanilla la velocidad baja sola sin input), ni escaleras/lava/teletransportes.
   Exige 2 clics sospechosos seguidos (`confirm`).
@@ -54,3 +56,38 @@ Ordenar la hotbar a mano con las teclas numéricas es legítimo (dedos en "rodil
 la regla `rearrange` original (4 ítems en 150 ms) lo marcaba. Ahora:
 - Nivel rápido: 5 ítems distintos en 100 ms. Nivel instantáneo: 4 ítems distintos en 20 ms (~1 tick).
 - La sospecha debe repetirse 2 veces en 5 s (`confirm-hits`); un único grupo (p. ej. paquetes juntados por lag) no alerta.
+
+## Cambios v1.2.0
+
+### Ping en la sanción (`%ping%`)
+Los comandos de sanción de cada check aceptan estos placeholders:
+`%player% %check% %ping% %avg_ping% %max_ping% %vl% %max_violations% %tps% %client_brand% %world% %proof_id% %details%`
+
+```yaml
+commands:
+  - "ban %player% [BatmanInv] %check% | Ping: %ping%ms (prom. %avg_ping%ms) | Prueba: %proof_id%"
+```
+
+### Pruebas en `violations.txt`
+Con `evidence.enabled: true` el plugin recuerda las últimas acciones de cada jugador y las escribe (en otro hilo,
+sin lag) en `plugins/BatmanInv/violations.txt`:
+- **Cada infracción**: bloque con el detalle y las últimas acciones.
+- **Cada sanción**: informe completo con un **ID de prueba** (`%proof_id%`): fecha exacta, UUID, cliente, ping
+  actual/promedio/máximo, TPS, posición, comandos ejecutados, todas las infracciones, un resumen (clics por
+  tipo, intervalo mínimo/medio/máximo entre clics, ráfaga máxima, **ítems agarrados** con cantidades) y la
+  **cronología** de cada clic con `+N ms` desde el anterior, el ítem, cómo lo agarró (SHIFT_LEFT, NUMBER_KEY...),
+  de/hacia qué inventario, el ping y si se movía.
+- `/batmaninv evidence <jugador>` guarda las pruebas a mano (para bans manuales).
+- Al pasar `max-file-size-mb` el archivo se archiva como `violations-<fecha>.txt`.
+
+### FastMouse: shift + doble clic ya no se marca
+Una cadena de ítems **idénticos** (20 tótems iguales, etc.) se permite siempre, sin importar la velocidad. Antes se
+juzgaba por tiempo, pero lo que tarda el servidor en procesar los clics depende de los demás plugins y a veces
+superaba el límite. Solo se marcan cadenas con ítems **distintos**.
+
+## Versiones automáticas
+Cada compilación en GitHub sube sola el número de versión: `1.1`, `1.2`, `1.3`... (`MAJOR.NÚMERO_DE_EJECUCIÓN`).
+- El jar sale como `BatmanInv-1.N.jar` y la versión aparece en `/plugins` y en `violations.txt`.
+- Cada push a `main` crea un **Release** `v1.N` con el jar (borra el paso *Release* de `build.yml` si no lo quieres).
+- Para saltar a otra versión, pon un tag (ej. `v2.0`) y se usa ese número, o cambia `MAJOR` en `build.yml`.
+- En local, `mvn clean package` usa `<revision>` del `pom.xml`; para otra: `mvn clean package -Drevision=1.9`.

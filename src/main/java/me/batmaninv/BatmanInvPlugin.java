@@ -9,6 +9,8 @@ public final class BatmanInvPlugin extends JavaPlugin {
     private Messages messages;
     private Storage storage;
     private ViolationManager violations;
+    private Evidence evidence;
+    private GuardListener listener;
     private BukkitTask autosave;
 
     @Override
@@ -23,9 +25,13 @@ public final class BatmanInvPlugin extends JavaPlugin {
         storage = new Storage(this);
         storage.load();
 
+        evidence = new Evidence(this);
+        evidence.start();
+
         violations = new ViolationManager(this);
 
-        getServer().getPluginManager().registerEvents(new GuardListener(this), this);
+        listener = new GuardListener(this);
+        getServer().getPluginManager().registerEvents(listener, this);
 
         PluginCommand cmd = getCommand("batmaninv");
         if (cmd != null) {
@@ -45,6 +51,9 @@ public final class BatmanInvPlugin extends JavaPlugin {
         }
         if (storage != null) {
             storage.save();
+        }
+        if (evidence != null) {
+            evidence.stop(); // termina de escribir violations.txt
         }
     }
 
@@ -81,5 +90,13 @@ public final class BatmanInvPlugin extends JavaPlugin {
 
     public ViolationManager violations() {
         return violations;
+    }
+
+    public Evidence evidence() {
+        return evidence;
+    }
+
+    GuardListener listener() {
+        return listener;
     }
 }

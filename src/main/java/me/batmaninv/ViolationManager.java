@@ -8,7 +8,10 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -73,6 +76,13 @@ public final class ViolationManager {
             plugin.getLogger().warning("No se pudo guardar la alerta de " + p.getName() + ": " + ex);
         }
 
+        // Pruebas para violations.txt (clics, ítems, ms, ping...)
+        try {
+            plugin.evidence().recordViolation(p, d, check, vl, cc.maxViolations, details, now);
+        } catch (Exception ex) {
+            plugin.getLogger().warning("No se pudo registrar la prueba de " + p.getName() + ": " + ex);
+        }
+
         if (s.alertsEnabled && vl >= cc.alertAfter) {
             try {
                 sendAlert(p, check, cc, vl, details);
@@ -83,7 +93,7 @@ public final class ViolationManager {
 
         if (s.punishEnabled && vl >= cc.maxViolations && !cc.commands.isEmpty()) {
             q.clear();
-            punish(p, check, cc, now);
+            punish(p, d, check, cc, vl, details, now);
         }
     }
 
@@ -160,15 +170,58 @@ public final class ViolationManager {
         }
     }
 
-    private void punish(Player p, Check check, Settings.CheckCfg cc, long now) {
+    private void punish(Player p, PlayerData d, Check check, Settings.CheckCfg cc, int vl,
+                        Map<String, String> details, long now) {
         Settings s = plugin.settings();
         Messages m = plugin.messages();
+        Evidence ev = plugin.evidence();
 
         plugin.storage().recordPunishment(p.getUniqueId(), p.getName(), check, now);
 
-        for (String cmd : cc.commands) {
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(),
-                    cmd.replace("%player%", p.getName()).replace("%check%", check.display()));
+        // Datos para los comandos (se calculan ANTES de ejecutarlos: al banear/kickear el jugador se desconecta)
+        Evidence.PingStats ps = ev.pingStats(p, d, now);
+        String proofId = s.evEnabled ? ev.newProofId(now) : "N/A";
+        String brand = p.getClientBrandName();
+        if (brand == null || brand.isEmpty()) {
+            brand = m.raw("unknown");
+        }
+
+        Map<String, String> ph = new LinkedHashMap<>();
+        ph.put("%player%", p.getName());
+        ph.put("%check%", check.display());
+        ph.put("%ping%", String.valueOf(ps.current()));
+        ph.put("%avg_ping%", String.valueOf(ps.avg()));
+        ph.put("%max_ping%", String.valueOf(ps.max()));
+        ph.put("%vl%", String.valueOf(vl));
+        ph.put("%violations%", String.valueOf(vl));
+        ph.put("%max_violations%", String.valueOf(cc.maxViolations));
+        ph.put("%tps%", String.format(Locale.ROOT, "%.1f", Evidence.currentTps()));
+        ph.put("%client_brand%", brand);
+        ph.put("%world%", p.getWorld().getName());
+        ph.put("%proof_id%", proofId);
+        ph.put("%details%", Evidence.flatten(details)); // al final: puede contener '%'
+
+        List<String> commands = new ArrayList<>();
+        for (String raw : cc.commands) {
+            String cmd = raw;
+            for (Map.Entry<String, String> e : ph.entrySet()) {
+                cmd = cmd.replace(e.getKey(), e.getValue());
+            }
+            commands.add(cmd);
+        }
+
+        // Informe completo en violations.txt antes de sancionar
+        if (s.evEnabled && s.evOnPunishment) {
+            try {
+                ev.writePunishmentReport(p, d, check, vl, cc.maxViolations, commands,
+                        Evidence.flatten(details), proofId, now, ps);
+            } catch (Exception ex) {
+                plugin.getLogger().warning("No se pudo escribir el informe de " + p.getName() + ": " + ex);
+            }
+        }
+
+        for (String cmd : commands) {
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), cmd);
         }
 
         if (s.punishBroadcast) {

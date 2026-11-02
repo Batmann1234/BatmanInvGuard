@@ -54,6 +54,7 @@ final class BatmanInvCommand implements CommandExecutor, TabCompleter {
             case "profile" -> profile(sender, args);
             case "stats" -> stats(sender);
             case "clearlogs" -> clearLogs(sender, args);
+            case "evidence" -> evidence(sender, args);
             default -> m.send(sender, GEN + "unknown-command", Messages.ph("label", label));
         }
         return true;
@@ -239,18 +240,48 @@ final class BatmanInvCommand implements CommandExecutor, TabCompleter {
                 "duration", String.valueOf(System.currentTimeMillis() - start)));
     }
 
+    // ---------------------------------------------------------------- evidence
+
+    private void evidence(CommandSender sender, String[] args) {
+        Messages m = plugin.messages();
+        String base = "command-messages.evidence-command.";
+        if (!perm(sender, "batmaninv.evidence")) {
+            return;
+        }
+        if (args.length < 2) {
+            m.send(sender, GEN + "specify-player", null);
+            return;
+        }
+        if (!plugin.settings().evEnabled) {
+            m.send(sender, base + "disabled", null);
+            return;
+        }
+        Player target = Bukkit.getPlayerExact(args[1]);
+        if (target == null) {
+            m.send(sender, GEN + "player-not-found", Messages.ph("player", args[1]));
+            return;
+        }
+        PlayerData d = plugin.listener().peek(target.getUniqueId());
+        if (d == null || d.evidence.isEmpty()) {
+            m.send(sender, base + "no-data", Messages.ph("player", target.getName()));
+            return;
+        }
+        String id = plugin.evidence().writeManualReport(target, d, sender.getName());
+        m.send(sender, base + "saved", Messages.ph("player", target.getName(), "proof_id", id));
+    }
+
     // ---------------------------------------------------------------- tab
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> out = new ArrayList<>();
         if (args.length == 1) {
-            for (String opt : List.of("help", "reload", "alerts", "profile", "stats", "clearlogs")) {
+            for (String opt : List.of("help", "reload", "alerts", "profile", "stats", "clearlogs", "evidence")) {
                 if (opt.startsWith(args[0].toLowerCase(Locale.ROOT))) {
                     out.add(opt);
                 }
             }
-        } else if (args.length == 2 && List.of("alerts", "profile", "clearlogs").contains(args[0].toLowerCase(Locale.ROOT))) {
+        } else if (args.length == 2 && List.of("alerts", "profile", "clearlogs", "evidence").contains(args[0].toLowerCase(Locale.ROOT))) {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 if (p.getName().toLowerCase(Locale.ROOT).startsWith(args[1].toLowerCase(Locale.ROOT))) {
                     out.add(p.getName());

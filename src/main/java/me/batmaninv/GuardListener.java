@@ -108,6 +108,20 @@ public final class GuardListener implements Listener {
         return reason != null;
     }
 
+    /** ¿Se guarda la acción como prueba? Se omiten solo las exenciones permanentes (creativo, mundo, bypass...). */
+    private boolean shouldRecord(PlayerData d, boolean exempt) {
+        if (!exempt) {
+            return true;
+        }
+        String r = d.lastExemptReason;
+        return r != null && !r.equals("gamemode") && !r.equals("world") && !r.equals("bedrock") && !r.equals("bypass");
+    }
+
+    /** Datos actuales de un jugador conectado (o null). */
+    PlayerData peek(UUID id) {
+        return players.get(id);
+    }
+
     private boolean canCancel(Check check) {
         Settings s = plugin.settings();
         return s.cancelEvents && s.check(check).cancel;
@@ -316,21 +330,26 @@ public final class GuardListener implements Listener {
     public void onHeld(PlayerItemHeldEvent e) {
         Settings s = plugin.settings();
         Player p = e.getPlayer();
-        if (!s.check(Check.FAST_HOTBAR).enabled || !s.hbCountSlotChanges) {
-            return;
-        }
         PlayerData d = data(p);
         long now = System.currentTimeMillis();
-        if (exempt(p, d, now)) {
+        boolean ex = exempt(p, d, now);
+        int diff = Math.floorMod(e.getNewSlot() - e.getPreviousSlot(), 9);
+        boolean scroll = diff == 1 || diff == 8;
+        EvidenceEvent ev = shouldRecord(d, ex)
+                ? plugin.evidence().recordHeld(p, d, e.getPreviousSlot(), e.getNewSlot(), scroll, now,
+                        ex ? d.lastExemptReason : null)
+                : null;
+        if (ex || !s.check(Check.FAST_HOTBAR).enabled || !s.hbCountSlotChanges) {
             return;
         }
         // Rueda del ratón = paso al slot contiguo (±1, con vuelta). Tiene umbrales mucho más altos
         // porque una rueda libre puede soltar muchos pasos legítimos de golpe.
-        int diff = Math.floorMod(e.getNewSlot() - e.getPreviousSlot(), 9);
-        boolean scroll = diff == 1 || diff == 8;
         boolean hit = scroll ? registerScroll(p, d, now) : registerHotbar(p, d, now, "slot-changes");
         if (hit && canCancel(Check.FAST_HOTBAR)) {
             e.setCancelled(true);
+            if (ev != null) {
+                ev.cancelled = true;
+            }
         }
     }
 
@@ -338,16 +357,20 @@ public final class GuardListener implements Listener {
     public void onSwap(PlayerSwapHandItemsEvent e) {
         Settings s = plugin.settings();
         Player p = e.getPlayer();
-        if (!s.check(Check.FAST_HOTBAR).enabled || !s.hbCountSwapHands) {
-            return;
-        }
         PlayerData d = data(p);
         long now = System.currentTimeMillis();
-        if (exempt(p, d, now)) {
+        boolean ex = exempt(p, d, now);
+        EvidenceEvent ev = shouldRecord(d, ex)
+                ? plugin.evidence().recordSwap(p, d, now, ex ? d.lastExemptReason : null)
+                : null;
+        if (ex || !s.check(Check.FAST_HOTBAR).enabled || !s.hbCountSwapHands) {
             return;
         }
         if (registerHotbar(p, d, now, "swap-hands") && canCancel(Check.FAST_HOTBAR)) {
             e.setCancelled(true);
+            if (ev != null) {
+                ev.cancelled = true;
+            }
         }
     }
 
@@ -518,7 +541,11 @@ public final class GuardListener implements Listener {
         Settings s = plugin.settings();
         PlayerData d = data(p);
         long now = System.currentTimeMillis();
-        if (exempt(p, d, now)) {
+        boolean ex = exempt(p, d, now);
+        EvidenceEvent ev = shouldRecord(d, ex)
+                ? plugin.evidence().recordClick(p, d, e, now, ex ? d.lastExemptReason : null)
+                : null;
+        if (ex) {
             return;
         }
         InventoryType top = e.getView().getTopInventory().getType();
@@ -572,6 +599,9 @@ public final class GuardListener implements Listener {
                 || (cancelMove && canCancel(Check.INV_MOVE))
                 || (cancelMouse && canCancel(Check.FAST_MOUSE))) {
             e.setCancelled(true);
+            if (ev != null) {
+                ev.cancelled = true;
+            }
         }
     }
 
@@ -586,7 +616,7 @@ public final class GuardListener implements Listener {
      * a un ritmo casi de 1 por tick. Dos reglas:
      *  - Rápida: cadena larga de slots distintos con intervalo MEDIO muy bajo.
      *  - Arrastre: cadena aún más larga, casi toda entre slots vecinos, a ritmo inhumano sostenido.
-     * Shift + doble clic manda, en un mismo instante, clics sobre el MISMO tipo de ítem: se permite.
+     * Shift + doble clic manda clics sobre ítems IDÉNTICOS (mismo ítem): se permite siempre.
      */
     private boolean checkShiftChain(Player p, PlayerData d, InventoryClickEvent e, ClickType ct, long now) {
         Settings s = plugin.settings();
@@ -606,10 +636,16 @@ public final class GuardListener implements Listener {
         }
 
         boolean continues = d.chainCount > 0 && now - d.lastShiftTime <= s.fmMaxGapMs;
+        // Terminó una tanda de ítems IDÉNTICOS (shift + doble clic) y llega otro ítem distinto:
+        // se empieza una cadena nueva en vez de mezclar la tanda anterior con este clic.
+        if (continues && d.chainRef != null && !d.chainMixed && d.chainCount >= s.fmIdenticalRunMin
+                && !cur.isSimilar(d.chainRef)) {
+            continues = false;
+        }
         if (!continues) {
             d.resetChain();
             d.chainStart = now;
-            d.chainType = cur.getType();
+            d.chainRef = cur.clone();
         } else {
             int step = Math.abs(slot - d.lastShiftSlot);
             if (step == 1 || step == 9) {
@@ -618,7 +654,7 @@ public final class GuardListener implements Listener {
         }
         d.chainCount++;
         d.chainSlots.add(slot);
-        if (cur.getType() != d.chainType) {
+        if (d.chainRef != null && !cur.isSimilar(d.chainRef)) {
             d.chainMixed = true;
         }
         d.lastShiftTime = now;
@@ -629,10 +665,13 @@ public final class GuardListener implements Listener {
             return false;
         }
 
-        long span = now - d.chainStart;
-        if (s.fmAllowBurst && !d.chainMixed && span <= s.fmBurstMs) {
-            return false; // shift + doble clic
+        // Cadena de ítems IDÉNTICOS (misma pila repetida): es lo que hace shift + doble clic en vanilla,
+        // da el mismo resultado que un mod, y su duración depende de cuánto tarde el servidor en procesarla
+        // (otros plugins escuchando el clic), así que NO se juzga por tiempo. Solo se marcan cadenas MEZCLADAS.
+        if (s.fmAllowBurst && !d.chainMixed) {
+            return false;
         }
+        long span = now - d.chainStart;
 
         int steps = n - 1;
         double avgGap = steps > 0 ? (double) span / steps : Double.MAX_VALUE;
