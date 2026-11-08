@@ -40,10 +40,10 @@ alert-format:
     %click_hint%
 
   # Línea que se añade al final del hover si el click está activado.
-  click-hint: '&fClick para &8teletransportarte &fa %player%.'
+  click-hint: '&fClick para escribir &8/inv %player% &fen el chat.'
 
   # Comando al hacer click en la alerta.
-  alert-click-command: /tp %player%
+  alert-click-command: /inv %player%
 
   # Prefijo para checks experimentales. Reemplaza %dev%.
   dev-prefix: '&f&l *'
@@ -64,6 +64,10 @@ checks:
     description: 'Mover ítems del inventario mientras el jugador se desplaza.'
   fast-mouse:
     description: 'Shift + clic mantenido moviendo muchos slots (Mouse Tweaks).'
+  container-wall:
+    description: 'Abrir un cofre, barril, shulker o ender chest sin línea de visión (a través de paredes).'
+  auto-armor:
+    description: 'Equipar la armadura automáticamente: varias piezas a la vez o reaccionando más rápido que un humano.'
 
 # Nombres de los datos que aparecen en %check_details%.
 details:
@@ -90,6 +94,16 @@ details:
   avg-gap: 'Intervalo medio'
   adjacent: 'Slots vecinos'
   unit-speed: 'bloques/tick'
+  pieces: 'Piezas'
+  container: 'Contenedor'
+  distance: 'Distancia'
+  blocked-by: 'Tapado por'
+  unit-blocks: 'bloques'
+  piece: 'Pieza'
+  reaction: 'Reacción'
+  origin-armor-burst: 'varias piezas a la vez'
+  origin-armor-break: 'equipó al instante tras romperse'
+  origin-armor-pickup: 'equipó al instante tras recogerla'
 
 # Alertas
 alerts-enabled: '%prefix% &8Alertas activadas'

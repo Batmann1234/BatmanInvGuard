@@ -41,6 +41,16 @@ final class PlayerData {
     boolean chainMixed;
     final Set<Integer> chainSlots = new HashSet<>();
 
+    // AutoArmor
+    final ArrayDeque<long[]> armorEquips = new ArrayDeque<>();   // {tiempo, slot 36-39} piezas equipadas
+    final long[] armorBreak = new long[4];                       // cuándo se rompió cada pieza (índice slot-36)
+    long armorPickupTime;                                        // última pieza de armadura recogida
+    ItemStack armorPickupItem;
+
+    // ContainerWall: último bloque con el que interactuó (clic derecho)
+    org.bukkit.block.Block interactBlock;
+    long interactTime;
+
     // Pruebas (violations.txt): últimas acciones del jugador
     final ArrayDeque<EvidenceEvent> evidence = new ArrayDeque<>();
 
@@ -80,6 +90,10 @@ final class PlayerData {
         hotbar.clear();
         scroll.clear();
         shuffle.clear();
+        armorEquips.clear();
+        java.util.Arrays.fill(armorBreak, 0L);
+        armorPickupItem = null;
+        interactBlock = null;
         suspicion.clear();
     }
 }

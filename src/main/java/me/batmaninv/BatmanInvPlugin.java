@@ -41,7 +41,7 @@ public final class BatmanInvPlugin extends JavaPlugin {
         }
 
         scheduleAutosave();
-        getLogger().info("BatmanInv activado (FastHotbar, InvMove, FastMouse).");
+        getLogger().info("BatmanInv activado (FastHotbar, InvMove, FastMouse, AutoArmor, ContainerWall).");
     }
 
     @Override

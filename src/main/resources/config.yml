@@ -1,6 +1,6 @@
 # ============================================================
 #   ʙᴀᴛᴍᴀɴɪɴᴠ  -  config.yml
-#   Checks: FastHotbar | InvMove | FastMouse
+#   Checks: FastHotbar | InvMove | FastMouse | AutoArmor | ContainerWall
 #   Los textos (alertas, hover, comandos) están en messages.yml
 #   v1.2: pruebas en violations.txt, %ping% en las sanciones y shift + doble clic ya no se marca.
 #   v1.1: menos falsos positivos (salto, inercia, lag), confirmación de sospechas y reglas nuevas.
@@ -64,7 +64,7 @@ alerts:
   click:
     enabled: true
     # RUN_COMMAND | SUGGEST_COMMAND | COPY_TO_CLIPBOARD
-    action: RUN_COMMAND
+    action: SUGGEST_COMMAND
   sound:
     enabled: false
     # Clave de sonido de Minecraft.
@@ -276,3 +276,67 @@ checks:
     count:
       shift-left: true
       shift-right: true
+
+  # AutoArmor: el cliente se equipa la armadura solo. Se mide el COMPORTAMIENTO, con varias protecciones
+  # contra falsos positivos: solo cuentan clics que equipan de verdad en un slot VACÍO del inventario propio
+  # (no cofres, no intercambios, no quitarse piezas) y cada señal debe repetirse (confirm) antes de alertar.
+  # Equiparse con clic derecho desde la hotbar, comandos o plugins NO pasa por aquí.
+  auto-armor:
+    enabled: true
+    experimental: false
+    max-violations: 5
+    alert-after: 1
+    cancel-events: true
+    commands:
+      - "kick %player% &8[BatmanInv] &fHas fallado %check%  estaremos vigilandote... -s"
+    # SEÑAL 1 - REACCIÓN: equipar la pieza justo después de que se rompa la anterior (o de recogerla).
+    # Al tiempo medido se le resta el ping (el cliente no puede reaccionar a algo que aún no le ha llegado).
+    # Un humano tarda 250 ms o más: el límite de 100 ms deja mucho margen.
+    reaction:
+      enabled: true
+      min-ms: 100
+      after-break: true
+      after-pickup: true
+      # Máximo tiempo que se recuerda la rotura/recogida (más tarde ya no se considera reacción).
+      memory-ms: 2000
+    # SEÑAL 2 - RÁFAGA: min-pieces piezas DISTINTAS equipadas dentro de window-ms (3 en 150 ms = 75 ms entre
+    # clics en slots distintos: imposible a mano). Subir window-ms o min-pieces = más permisivo.
+    burst:
+      enabled: true
+      min-pieces: 3
+      window-ms: 150
+    # Una sola detección no alerta: hacen falta 'hits' dentro de 'window-ms' (lag puntual, ráfagas de paquetes...).
+    confirm:
+      hits: 2
+      window-ms: 60000
+    # Tipos de clic que cuentan como "equipar".
+    count:
+      shift-click: true     # shift + clic sobre la pieza (equipa sola)
+      direct-click: true    # soltar la pieza del cursor en el slot de armadura
+      number-key: true      # tecla 1-9 sobre el slot de armadura
+      swap-hands: true      # tecla F sobre el slot de armadura
+
+  # ContainerWall: abrir un cofre/barril/shulker/ender chest a través de paredes (sin línea de visión).
+  # Solo se juzgan contenedores de BLOQUE abiertos con un clic derecho del jugador sobre ese bloque.
+  # Los inventarios de plugins NO se revisan: tumbas de AxGraves, menús, /ec, /invsee... (no son un bloque).
+  container-wall:
+    enabled: true
+    experimental: false
+    max-violations: 5
+    alert-after: 1
+    cancel-events: true
+    commands:
+      - "kick %player% &8[BatmanInv] &fHas fallado %check%  estaremos vigilandote... -s"
+    # Tipos de inventario que se revisan.
+    inventory-types: [CHEST, BARREL, SHULKER_BOX, ENDER_CHEST]
+    # Margen (bloques) con el que se prueba la posición del ojo por lag o al agacharse/levantarse.
+    # Se alerta solo si NINGÚN punto del contenedor se ve desde NINGUNA de esas posiciones. Subirlo = más permisivo.
+    eye-tolerance: 0.35
+    # Máximo tiempo entre el clic derecho y la apertura para considerar que el jugador lo abrió con ese clic.
+    open-delay-ms: 250
+    # Bloques que nunca se revisan (contenedores custom de otros plugins). Ej: [BARREL]
+    ignored-materials: []
+    # Hace falta repetirlo 'hits' veces dentro de 'window-ms' para alertar.
+    confirm:
+      hits: 2
+      window-ms: 30000

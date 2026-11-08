@@ -2,7 +2,7 @@ name: BatmanInv
 version: '${project.version}'
 main: me.batmaninv.BatmanInvPlugin
 api-version: '1.21'
-description: Detecta FastHotbar, InvMove y FastMouse (Mouse Tweaks).
+description: Detecta FastHotbar, InvMove, FastMouse (Mouse Tweaks), AutoArmor y ContainerWall.
 commands:
   batmaninv:
     description: Comandos de BatmanInv

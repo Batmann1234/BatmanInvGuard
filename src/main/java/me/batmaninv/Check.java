@@ -3,7 +3,9 @@ package me.batmaninv;
 public enum Check {
     FAST_HOTBAR("fast-hotbar", "FastHotbar"),
     INV_MOVE("inv-move", "InvMove"),
-    FAST_MOUSE("fast-mouse", "FastMouse");
+    FAST_MOUSE("fast-mouse", "FastMouse"),
+    AUTO_ARMOR("auto-armor", "AutoArmor"),
+    CONTAINER_WALL("container-wall", "ContainerWall");
 
     private final String id;
     private final String display;
@@ -18,7 +20,7 @@ public enum Check {
         return id;
     }
 
-    /** Nombre mostrado: FastHotbar, InvMove, FastMouse */
+    /** Nombre mostrado: FastHotbar, InvMove, FastMouse, AutoArmor, ContainerWall */
     public String display() {
         return display;
     }

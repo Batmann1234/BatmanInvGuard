@@ -6,6 +6,8 @@ Plugin para Paper/Purpur 1.21.x. Detecta el **comportamiento** típico de mods d
 |-------|-------------|
 | **FastHotbar** | Cambios de hotbar demasiado rápidos (rueda, teclas 1-9, tecla F) y **varios ítems de la hotbar reorganizados al instante** (inventario abierto o cerrado) |
 | **InvMove** | Mover ítems del inventario/hotbar mientras el jugador camina o corre |
+| **AutoArmor** | Equipar la armadura automáticamente: varias piezas distintas casi a la vez, o equipar tras romperse/recogerla con una reacción menor a la humana (descontando el ping) |
+| **ContainerWall** | Abrir cofres, barriles, shulkers y ender chests a través de paredes (sin línea de visión). Las tumbas de AxGraves y otros inventarios de plugins no se revisan |
 | **FastMouse** | Mouse Tweaks: shift + clic mantenido arrastrando sobre muchos slots. Shift + doble clic **no** se marca |
 
 > El servidor no sabe qué mod usa el jugador, solo ve paquetes. Por eso se detecta el patrón.

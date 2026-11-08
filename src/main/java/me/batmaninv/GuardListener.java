@@ -1,19 +1,27 @@
 package me.batmaninv;
 
 import org.bukkit.Bukkit;
+import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerGameModeChangeEvent;
+import org.bukkit.event.player.PlayerItemBreakEvent;
 import org.bukkit.event.player.PlayerItemHeldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
@@ -22,8 +30,12 @@ import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.player.PlayerVelocityEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.util.RayTraceResult;
+import org.bukkit.util.Vector;
 
 import java.util.ArrayDeque;
 import java.util.HashMap;
@@ -560,6 +572,7 @@ public final class GuardListener implements Listener {
         boolean cancelHotbar = false;
         boolean cancelMove = false;
         boolean cancelMouse = false;
+        boolean cancelArmor = false;
 
         // FastHotbar: tecla de número / tecla F dentro del inventario + reorganización instantánea
         if (s.check(Check.FAST_HOTBAR).enabled) {
@@ -596,14 +609,358 @@ public final class GuardListener implements Listener {
             cancelMouse = checkShiftChain(p, d, e, ct, now);
         }
 
+        // AutoArmor: equipar armadura a velocidad / reacción inhumana
+        if (s.check(Check.AUTO_ARMOR).enabled) {
+            cancelArmor = checkAutoArmor(p, d, e, ct, now);
+        }
+
         if ((cancelHotbar && canCancel(Check.FAST_HOTBAR))
                 || (cancelMove && canCancel(Check.INV_MOVE))
-                || (cancelMouse && canCancel(Check.FAST_MOUSE))) {
+                || (cancelMouse && canCancel(Check.FAST_MOUSE))
+                || (cancelArmor && canCancel(Check.AUTO_ARMOR))) {
             e.setCancelled(true);
             if (ev != null) {
                 ev.cancelled = true;
             }
         }
+    }
+
+    // ------------------------------------------------------------------
+    //  AutoArmor
+    // ------------------------------------------------------------------
+
+    /** @return slot de armadura del inventario (36 botas, 37 pantalones, 38 peto/elytra, 39 casco) o -1 */
+    private static int armorIndex(Material m) {
+        if (m == null) {
+            return -1;
+        }
+        String n = m.name();
+        if (n.endsWith("_HELMET")) {
+            return 39;
+        }
+        if (n.endsWith("_CHESTPLATE") || m == Material.ELYTRA) {
+            return 38;
+        }
+        if (n.endsWith("_LEGGINGS")) {
+            return 37;
+        }
+        if (n.endsWith("_BOOTS")) {
+            return 36;
+        }
+        return -1;
+    }
+
+    private static boolean isEmpty(ItemStack it) {
+        return it == null || it.getType().isAir();
+    }
+
+    /** Pieza equipada por un clic: el slot de armadura donde queda y el ítem. */
+    private record Equip(int slot, ItemStack piece) { }
+
+    /**
+     * Solo cuenta clics que de verdad EQUIPAN una pieza en un slot de armadura VACÍO, dentro del inventario
+     * propio del jugador (en un cofre, shift+clic manda el ítem al cofre, no a la armadura). Intercambiar una
+     * pieza ya puesta, quitarla o moverla entre slots normales no cuenta.
+     */
+    private Equip armorEquip(Player p, InventoryClickEvent e, ClickType ct) {
+        Settings s = plugin.settings();
+        if (e.getView().getTopInventory().getType() != InventoryType.CRAFTING
+                || e.getClickedInventory() != p.getInventory()) {
+            return null;
+        }
+        PlayerInventory inv = p.getInventory();
+        ItemStack cur = e.getCurrentItem();
+        boolean armorSlot = e.getSlotType() == InventoryType.SlotType.ARMOR;
+        switch (ct) {
+            case SHIFT_LEFT:
+            case SHIFT_RIGHT: {
+                if (!s.aaCountShift || armorSlot || isEmpty(cur)) {
+                    return null;
+                }
+                int idx = armorIndex(cur.getType());
+                return idx >= 0 && isEmpty(inv.getItem(idx)) ? new Equip(idx, cur) : null;
+            }
+            case LEFT:
+            case RIGHT: {
+                if (!s.aaCountDirect || !armorSlot || !isEmpty(cur)) {
+                    return null;
+                }
+                ItemStack cursor = e.getCursor();
+                if (isEmpty(cursor)) {
+                    return null;
+                }
+                int idx = armorIndex(cursor.getType());
+                return idx >= 0 && idx == e.getSlot() ? new Equip(idx, cursor) : null;
+            }
+            case NUMBER_KEY: {
+                int b = e.getHotbarButton();
+                if (!s.aaCountNumberKey || !armorSlot || !isEmpty(cur) || b < 0 || b > 8) {
+                    return null;
+                }
+                ItemStack hb = inv.getItem(b);
+                if (isEmpty(hb)) {
+                    return null;
+                }
+                int idx = armorIndex(hb.getType());
+                return idx >= 0 && idx == e.getSlot() ? new Equip(idx, hb) : null;
+            }
+            case SWAP_OFFHAND: {
+                if (!s.aaCountSwapHands || !armorSlot || !isEmpty(cur)) {
+                    return null;
+                }
+                ItemStack off = inv.getItemInOffHand();
+                if (isEmpty(off)) {
+                    return null;
+                }
+                int idx = armorIndex(off.getType());
+                return idx >= 0 && idx == e.getSlot() ? new Equip(idx, off) : null;
+            }
+            default:
+                return null;
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onItemBreak(PlayerItemBreakEvent e) {
+        int idx = armorIndex(e.getBrokenItem().getType());
+        if (idx >= 0) {
+            data(e.getPlayer()).armorBreak[idx - 36] = System.currentTimeMillis();
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onArmorPickup(EntityPickupItemEvent e) {
+        if (!(e.getEntity() instanceof Player p)) {
+            return;
+        }
+        ItemStack it = e.getItem().getItemStack();
+        if (armorIndex(it.getType()) < 0) {
+            return;
+        }
+        PlayerData d = data(p);
+        d.armorPickupTime = System.currentTimeMillis();
+        d.armorPickupItem = it.clone();
+    }
+
+    /**
+     * AutoArmor = el cliente equipa la armadura solo. Dos señales, ambas imposibles para una mano humana,
+     * y ambas necesitan repetirse (confirm) antes de alertar:
+     *  - Reacción: equipar la pieza justo tras romperse la anterior (o tras recogerla) con un tiempo de
+     *    reacción menor al humano. Al tiempo medido se le RESTA el ping: el cliente no puede reaccionar a
+     *    algo que todavía no le ha llegado.
+     *  - Ráfaga: varias piezas DISTINTAS equipadas en una ventana de pocos ms.
+     * Solo se cuentan clics que equipan de verdad en un slot vacío (ver armorEquip).
+     * @return true si se registró una infracción
+     */
+    private boolean checkAutoArmor(Player p, PlayerData d, InventoryClickEvent e, ClickType ct, long now) {
+        Settings s = plugin.settings();
+        Messages m = plugin.messages();
+        Equip eq = armorEquip(p, e, ct);
+        if (eq == null) {
+            return false;
+        }
+        int ping = Math.max(0, p.getPing());
+        String pieceName = eq.piece().getType().name();
+
+        d.armorEquips.addLast(new long[]{now, eq.slot()});
+        while (!d.armorEquips.isEmpty() && now - d.armorEquips.peekFirst()[0] > s.aaBurstWindowMs) {
+            d.armorEquips.pollFirst();
+        }
+
+        // --- Reacción tras romperse / recogerla ---
+        if (s.aaReactionEnabled) {
+            String origin = null;
+            long react = 0;
+            long brokeAt = d.armorBreak[eq.slot() - 36];
+            if (s.aaAfterBreak && brokeAt > 0 && now - brokeAt <= s.aaReactionMemoryMs) {
+                react = now - brokeAt - ping;
+                if (react < s.aaReactionMinMs) {
+                    origin = "origin-armor-break";
+                    d.armorBreak[eq.slot() - 36] = 0;
+                }
+            }
+            if (origin == null && s.aaAfterPickup && d.armorPickupItem != null
+                    && now - d.armorPickupTime <= s.aaReactionMemoryMs
+                    && eq.piece().isSimilar(d.armorPickupItem)) {
+                react = now - d.armorPickupTime - ping;
+                if (react < s.aaReactionMinMs) {
+                    origin = "origin-armor-pickup";
+                    d.armorPickupItem = null;
+                }
+            }
+            if (origin != null) {
+                if (confirm(d, "auto-armor-react", now, s.aaConfirmHits, s.aaConfirmWindowMs)) {
+                    flag(p, d, Check.AUTO_ARMOR, Messages.ph(
+                            m.detail("origin"), m.detail(origin),
+                            m.detail("reaction"), Math.max(0, react) + "ms",
+                            m.detail("limit"), "<" + s.aaReactionMinMs + "ms",
+                            m.detail("piece"), pieceName));
+                    return true;
+                }
+                return false;
+            }
+        }
+
+        // --- Ráfaga de piezas distintas ---
+        if (!s.aaBurstEnabled) {
+            return false;
+        }
+        Set<Long> slots = new HashSet<>();
+        long start = now;
+        for (long[] a : d.armorEquips) {
+            slots.add(a[1]);
+            start = Math.min(start, a[0]);
+        }
+        if (slots.size() < s.aaBurstMinPieces) {
+            return false;
+        }
+        int pieces = slots.size();
+        long span = now - start;
+        d.armorEquips.clear(); // este grupo ya se evaluó: el siguiente tiene que ser uno nuevo
+        if (!confirm(d, "auto-armor-burst", now, s.aaConfirmHits, s.aaConfirmWindowMs)) {
+            return false;
+        }
+        flag(p, d, Check.AUTO_ARMOR, Messages.ph(
+                m.detail("origin"), m.detail("origin-armor-burst"),
+                m.detail("pieces"), String.valueOf(pieces),
+                m.detail("window"), span + "ms",
+                m.detail("limit"), s.aaBurstMinPieces + " / " + s.aaBurstWindowMs + "ms"));
+        return true;
+    }
+
+    // ------------------------------------------------------------------
+    //  ContainerWall
+    // ------------------------------------------------------------------
+
+    /** Recuerda el último bloque tocado con clic derecho: solo se juzgan contenedores abiertos POR el jugador. */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onInteractBlock(PlayerInteractEvent e) {
+        if (e.getAction() != Action.RIGHT_CLICK_BLOCK || e.getClickedBlock() == null) {
+            return;
+        }
+        PlayerData d = data(e.getPlayer());
+        d.interactBlock = e.getClickedBlock();
+        d.interactTime = System.currentTimeMillis();
+    }
+
+    /**
+     * Abrir un cofre/barril/shulker/ender chest SIN poder verlo (hay bloques sólidos por medio). El servidor
+     * vanilla solo comprueba la distancia, no la línea de visión.
+     *
+     * Sin falsos positivos:
+     *  - Solo se juzgan contenedores de BLOQUE abiertos con un clic derecho del propio jugador sobre ese bloque.
+     *    Inventarios de plugins (tumbas de AxGraves, menús, /ec, /invsee...) no tienen bloque asociado
+     *    (getLocation() == null) o no vienen de un clic en el bloque, así que se saltan solos.
+     *  - Se prueban 15 puntos del bloque (centro, caras y esquinas) desde 7 posiciones del ojo (con
+     *    eye-tolerance de margen por lag/agacharse). Solo se alerta si TODOS los rayos están tapados.
+     *  - Se ignoran los bloques atravesables (hierba, antorchas, carteles, puertas abiertas...).
+     *  - Si el ojo está dentro de un bloque sólido no se juzga.
+     *  - Hace falta repetirlo (confirm) antes de alertar.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onContainerOpen(InventoryOpenEvent e) {
+        if (!(e.getPlayer() instanceof Player p)) {
+            return;
+        }
+        Settings s = plugin.settings();
+        if (!s.check(Check.CONTAINER_WALL).enabled) {
+            return;
+        }
+        Inventory inv = e.getInventory();
+        if (!s.cwTypes.contains(inv.getType())) {
+            return;
+        }
+        Location loc = inv.getLocation();
+        if (loc == null || loc.getWorld() == null) {
+            return; // inventario de plugin (tumbas de AxGraves, menús...): no es un bloque
+        }
+        PlayerData d = data(p);
+        long now = System.currentTimeMillis();
+        Block target = d.interactBlock;
+        if (target == null || now - d.interactTime > s.cwOpenDelayMs
+                || !target.getWorld().equals(loc.getWorld())) {
+            return; // no lo abrió con un clic en el bloque (comando, plugin...)
+        }
+        // El bloque tocado tiene que ser ESE contenedor (cofre doble: su centro queda a ~1 bloque).
+        double dxc = target.getX() + 0.5 - loc.getX();
+        double dyc = target.getY() + 0.5 - loc.getY();
+        double dzc = target.getZ() + 0.5 - loc.getZ();
+        if (dxc * dxc + dyc * dyc + dzc * dzc > 2.25) {
+            return;
+        }
+        if (s.cwIgnoredMaterials.contains(target.getType()) || exempt(p, d, now)) {
+            return;
+        }
+
+        Block blocker = wallBetween(p, target, s.cwTolerance);
+        if (blocker == null) {
+            return;
+        }
+        if (!confirm(d, "container-wall", now, s.cwConfirmHits, s.cwConfirmWindowMs)) {
+            return;
+        }
+        Messages m = plugin.messages();
+        Location eye = p.getEyeLocation();
+        double cx = Math.max(target.getX(), Math.min(eye.getX(), target.getX() + 1.0));
+        double cy = Math.max(target.getY(), Math.min(eye.getY(), target.getY() + 1.0));
+        double cz = Math.max(target.getZ(), Math.min(eye.getZ(), target.getZ() + 1.0));
+        double dist = Math.sqrt((eye.getX() - cx) * (eye.getX() - cx) + (eye.getY() - cy) * (eye.getY() - cy)
+                + (eye.getZ() - cz) * (eye.getZ() - cz));
+        flag(p, d, Check.CONTAINER_WALL, Messages.ph(
+                m.detail("container"), target.getType().name() + " (" + target.getX() + ", " + target.getY()
+                        + ", " + target.getZ() + ")",
+                m.detail("distance"), String.format(Locale.ROOT, "%.1f", dist) + " " + m.detail("unit-blocks"),
+                m.detail("blocked-by"), blocker.getType().name()));
+        if (canCancel(Check.CONTAINER_WALL)) {
+            e.setCancelled(true);
+        }
+    }
+
+    /**
+     * @return el bloque que tapa el contenedor, o null si se puede ver desde algún punto (o no se puede juzgar)
+     */
+    private Block wallBetween(Player p, Block target, double tol) {
+        World w = target.getWorld();
+        Location eyeLoc = p.getEyeLocation();
+        if (!eyeLoc.getBlock().isPassable()) {
+            return null; // el ojo está dentro de un bloque sólido: no se juzga
+        }
+        double[][] offsets = {
+                {0, 0, 0}, {tol, 0, 0}, {-tol, 0, 0}, {0, 0, tol}, {0, 0, -tol}, {0, tol, 0}, {0, -tol, 0}
+        };
+        double[][] samples = {
+                {0.5, 0.5, 0.5},
+                {0.5, 0.97, 0.5}, {0.5, 0.03, 0.5}, {0.03, 0.5, 0.5}, {0.97, 0.5, 0.5},
+                {0.5, 0.5, 0.03}, {0.5, 0.5, 0.97},
+                {0.1, 0.1, 0.1}, {0.9, 0.1, 0.1}, {0.1, 0.9, 0.1}, {0.9, 0.9, 0.1},
+                {0.1, 0.1, 0.9}, {0.9, 0.1, 0.9}, {0.1, 0.9, 0.9}, {0.9, 0.9, 0.9}
+        };
+        Block first = null;
+        boolean judged = false;
+        for (double[] off : offsets) {
+            Vector from = eyeLoc.toVector().add(new Vector(off[0], off[1], off[2]));
+            if (!w.getBlockAt(from.getBlockX(), from.getBlockY(), from.getBlockZ()).isPassable()) {
+                continue; // esta posición de prueba cae dentro de una pared: se descarta
+            }
+            for (double[] smp : samples) {
+                Vector to = new Vector(target.getX() + smp[0], target.getY() + smp[1], target.getZ() + smp[2]);
+                Vector dir = to.clone().subtract(from);
+                double len = dir.length();
+                if (len < 1.0E-4) {
+                    return null;
+                }
+                dir.normalize();
+                RayTraceResult r = w.rayTraceBlocks(from.toLocation(w), dir, len, FluidCollisionMode.NEVER, true);
+                judged = true;
+                if (r == null || r.getHitBlock() == null || r.getHitBlock().equals(target)) {
+                    return null; // hay línea de visión
+                }
+                if (first == null) {
+                    first = r.getHitBlock();
+                }
+            }
+        }
+        return judged ? first : null;
     }
 
     /** Ítem "normal": sin nombre personalizado ni lore (tótems, bloques, comida...). */

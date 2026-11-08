@@ -145,6 +145,30 @@ public final class Settings {
     public boolean fmShiftLeft;
     public boolean fmShiftRight;
 
+    // AutoArmor
+    public boolean aaBurstEnabled;
+    public int aaBurstMinPieces;
+    public int aaBurstWindowMs;
+    public boolean aaReactionEnabled;
+    public int aaReactionMinMs;
+    public int aaReactionMemoryMs;
+    public boolean aaAfterBreak;
+    public boolean aaAfterPickup;
+    public int aaConfirmHits;
+    public int aaConfirmWindowMs;
+    public boolean aaCountShift;
+    public boolean aaCountDirect;
+    public boolean aaCountNumberKey;
+    public boolean aaCountSwapHands;
+
+    // ContainerWall
+    public Set<InventoryType> cwTypes = EnumSet.noneOf(InventoryType.class);
+    public Set<org.bukkit.Material> cwIgnoredMaterials = EnumSet.noneOf(org.bukkit.Material.class);
+    public double cwTolerance;
+    public int cwOpenDelayMs;
+    public int cwConfirmHits;
+    public int cwConfirmWindowMs;
+
     public CheckCfg check(Check c) {
         return checks.get(c);
     }
@@ -298,5 +322,50 @@ public final class Settings {
         fmSameSlotMs = c.getInt(f + "same-slot-repeat-ms", 400);
         fmShiftLeft = c.getBoolean(f + "count.shift-left", true);
         fmShiftRight = c.getBoolean(f + "count.shift-right", true);
+
+        // AutoArmor
+        String a = "checks.auto-armor.";
+        aaBurstEnabled = c.getBoolean(a + "burst.enabled", true);
+        aaBurstMinPieces = Math.max(2, c.getInt(a + "burst.min-pieces", 3));
+        aaBurstWindowMs = c.getInt(a + "burst.window-ms", 150);
+        aaReactionEnabled = c.getBoolean(a + "reaction.enabled", true);
+        aaReactionMinMs = c.getInt(a + "reaction.min-ms", 100);
+        aaReactionMemoryMs = c.getInt(a + "reaction.memory-ms", 2000);
+        aaAfterBreak = c.getBoolean(a + "reaction.after-break", true);
+        aaAfterPickup = c.getBoolean(a + "reaction.after-pickup", true);
+        aaConfirmHits = c.getInt(a + "confirm.hits", 2);
+        aaConfirmWindowMs = c.getInt(a + "confirm.window-ms", 60000);
+        aaCountShift = c.getBoolean(a + "count.shift-click", true);
+        aaCountDirect = c.getBoolean(a + "count.direct-click", true);
+        aaCountNumberKey = c.getBoolean(a + "count.number-key", true);
+        aaCountSwapHands = c.getBoolean(a + "count.swap-hands", true);
+
+        // ContainerWall
+        String w = "checks.container-wall.";
+        cwTypes = EnumSet.noneOf(InventoryType.class);
+        for (String n : c.getStringList(w + "inventory-types")) {
+            try {
+                cwTypes.add(InventoryType.valueOf(n.trim().toUpperCase(Locale.ROOT)));
+            } catch (IllegalArgumentException ignored) {
+                // nombre inválido
+            }
+        }
+        if (!c.isList(w + "inventory-types")) {
+            cwTypes.add(InventoryType.CHEST);
+            cwTypes.add(InventoryType.BARREL);
+            cwTypes.add(InventoryType.SHULKER_BOX);
+            cwTypes.add(InventoryType.ENDER_CHEST);
+        }
+        cwIgnoredMaterials = EnumSet.noneOf(org.bukkit.Material.class);
+        for (String n : c.getStringList(w + "ignored-materials")) {
+            org.bukkit.Material mat = org.bukkit.Material.matchMaterial(n.trim());
+            if (mat != null) {
+                cwIgnoredMaterials.add(mat);
+            }
+        }
+        cwTolerance = Math.max(0.0, c.getDouble(w + "eye-tolerance", 0.35));
+        cwOpenDelayMs = c.getInt(w + "open-delay-ms", 250);
+        cwConfirmHits = c.getInt(w + "confirm.hits", 2);
+        cwConfirmWindowMs = c.getInt(w + "confirm.window-ms", 30000);
     }
 }
